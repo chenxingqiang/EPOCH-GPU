@@ -22,9 +22,6 @@
 MODULE particle_data_gpu
 
   USE, INTRINSIC :: ISO_FORTRAN_ENV, ONLY: INT32, INT64, REAL64
-#ifdef GPU_ENABLED
-  USE cudafor
-#endif
   USE gpu_config
   
   IMPLICIT NONE
@@ -62,54 +59,34 @@ MODULE particle_data_gpu
     
     !-----------------------------------------------------------------------
     ! Position arrays (2D: x, y)
+    ! Note: Using standard allocatable arrays with OpenACC data directives
+    !       for GPU memory management. CUDA Fortran DEVICE arrays require
+    !       separate implementation with .cuf extension.
     !-----------------------------------------------------------------------
-#ifdef GPU_ENABLED
-    REAL(num), DEVICE, ALLOCATABLE :: pos_x(:)
-    REAL(num), DEVICE, ALLOCATABLE :: pos_y(:)
-#else
     REAL(num), ALLOCATABLE :: pos_x(:)
     REAL(num), ALLOCATABLE :: pos_y(:)
-#endif
     
     !-----------------------------------------------------------------------
     ! Momentum arrays (3D: px, py, pz)
     !-----------------------------------------------------------------------
-#ifdef GPU_ENABLED
-    REAL(num), DEVICE, ALLOCATABLE :: px(:)
-    REAL(num), DEVICE, ALLOCATABLE :: py(:)
-    REAL(num), DEVICE, ALLOCATABLE :: pz(:)
-#else
     REAL(num), ALLOCATABLE :: px(:)
     REAL(num), ALLOCATABLE :: py(:)
     REAL(num), ALLOCATABLE :: pz(:)
-#endif
     
     !-----------------------------------------------------------------------
     ! Particle weight
     !-----------------------------------------------------------------------
-#ifdef GPU_ENABLED
-    REAL(num), DEVICE, ALLOCATABLE :: weight(:)
-#else
     REAL(num), ALLOCATABLE :: weight(:)
-#endif
     
     !-----------------------------------------------------------------------
     ! Cell index (for sorting and cache optimization)
     !-----------------------------------------------------------------------
-#ifdef GPU_ENABLED
-    INTEGER, DEVICE, ALLOCATABLE :: cell_idx(:)
-#else
     INTEGER, ALLOCATABLE :: cell_idx(:)
-#endif
     
     !-----------------------------------------------------------------------
     ! Boundary flags (0=interior, >0=needs boundary processing)
     !-----------------------------------------------------------------------
-#ifdef GPU_ENABLED
-    INTEGER, DEVICE, ALLOCATABLE :: boundary_flag(:)
-#else
     INTEGER, ALLOCATABLE :: boundary_flag(:)
-#endif
     
     !-----------------------------------------------------------------------
     ! Host-side mirror arrays (for data transfer)
@@ -190,20 +167,7 @@ CONTAINS
     soa%h_cell_idx = 0
     soa%h_boundary_flag = 0
     
-#ifdef GPU_ENABLED
-    IF (gpu_enabled) THEN
-      ! Allocate device arrays
-      ALLOCATE(soa%pos_x(cap), STAT=ierr)
-      ALLOCATE(soa%pos_y(cap), STAT=ierr)
-      ALLOCATE(soa%px(cap), STAT=ierr)
-      ALLOCATE(soa%py(cap), STAT=ierr)
-      ALLOCATE(soa%pz(cap), STAT=ierr)
-      ALLOCATE(soa%weight(cap), STAT=ierr)
-      ALLOCATE(soa%cell_idx(cap), STAT=ierr)
-      ALLOCATE(soa%boundary_flag(cap), STAT=ierr)
-    END IF
-#else
-    ! CPU-only: use host arrays as main arrays
+    ! Allocate main arrays (used for both CPU and GPU via OpenACC)
     ALLOCATE(soa%pos_x(cap), STAT=ierr)
     ALLOCATE(soa%pos_y(cap), STAT=ierr)
     ALLOCATE(soa%px(cap), STAT=ierr)
@@ -221,7 +185,6 @@ CONTAINS
     soa%weight = 0.0_num
     soa%cell_idx = 0
     soa%boundary_flag = 0
-#endif
     
     soa%is_allocated = .TRUE.
     soa%data_on_device = .FALSE.
@@ -319,35 +282,7 @@ CONTAINS
     temp_int(1:copy_count) = soa%h_boundary_flag(1:copy_count)
     CALL MOVE_ALLOC(temp_int, soa%h_boundary_flag)
     
-#ifdef GPU_ENABLED
-    IF (gpu_enabled) THEN
-      ! For GPU arrays, we need to copy to host, reallocate, then copy back
-      IF (soa%data_on_device) THEN
-        CALL soa_copy_to_host(soa)
-      END IF
-      
-      IF (ALLOCATED(soa%pos_x)) DEALLOCATE(soa%pos_x)
-      IF (ALLOCATED(soa%pos_y)) DEALLOCATE(soa%pos_y)
-      IF (ALLOCATED(soa%px)) DEALLOCATE(soa%px)
-      IF (ALLOCATED(soa%py)) DEALLOCATE(soa%py)
-      IF (ALLOCATED(soa%pz)) DEALLOCATE(soa%pz)
-      IF (ALLOCATED(soa%weight)) DEALLOCATE(soa%weight)
-      IF (ALLOCATED(soa%cell_idx)) DEALLOCATE(soa%cell_idx)
-      IF (ALLOCATED(soa%boundary_flag)) DEALLOCATE(soa%boundary_flag)
-      
-      ALLOCATE(soa%pos_x(new_capacity))
-      ALLOCATE(soa%pos_y(new_capacity))
-      ALLOCATE(soa%px(new_capacity))
-      ALLOCATE(soa%py(new_capacity))
-      ALLOCATE(soa%pz(new_capacity))
-      ALLOCATE(soa%weight(new_capacity))
-      ALLOCATE(soa%cell_idx(new_capacity))
-      ALLOCATE(soa%boundary_flag(new_capacity))
-      
-      soa%data_on_device = .FALSE.
-    END IF
-#else
-    ! CPU-only resize
+    ! Resize main arrays
     ALLOCATE(temp_real(new_capacity), STAT=ierr)
     temp_real(1:copy_count) = soa%pos_x(1:copy_count)
     CALL MOVE_ALLOC(temp_real, soa%pos_x)
@@ -379,7 +314,9 @@ CONTAINS
     ALLOCATE(temp_int(new_capacity), STAT=ierr)
     temp_int(1:copy_count) = soa%boundary_flag(1:copy_count)
     CALL MOVE_ALLOC(temp_int, soa%boundary_flag)
-#endif
+    
+    ! Mark data as no longer on device (needs re-upload after resize)
+    soa%data_on_device = .FALSE.
     
     soa%capacity = new_capacity
     
@@ -387,13 +324,12 @@ CONTAINS
 
 
   !---------------------------------------------------------------------------
-  !> @brief Copy particle data from host to device
+  !> @brief Copy particle data from host to device using OpenACC
   !> @param[inout] soa Particle SoA structure
   !---------------------------------------------------------------------------
   SUBROUTINE soa_copy_to_device(soa)
     TYPE(particle_soa_t), INTENT(INOUT) :: soa
     
-#ifdef GPU_ENABLED
     INTEGER(i8) :: n
     
     IF (.NOT. soa%is_allocated) RETURN
@@ -401,6 +337,7 @@ CONTAINS
     
     n = soa%count
     
+    ! Copy from host mirror arrays to main arrays
     soa%pos_x(1:n) = soa%h_pos_x(1:n)
     soa%pos_y(1:n) = soa%h_pos_y(1:n)
     soa%px(1:n) = soa%h_px(1:n)
@@ -410,20 +347,23 @@ CONTAINS
     soa%cell_idx(1:n) = soa%h_cell_idx(1:n)
     soa%boundary_flag(1:n) = soa%h_boundary_flag(1:n)
     
+    ! OpenACC: update device with main arrays
+    !$ACC UPDATE DEVICE(soa%pos_x(1:n), soa%pos_y(1:n)) &
+    !$ACC   DEVICE(soa%px(1:n), soa%py(1:n), soa%pz(1:n)) &
+    !$ACC   DEVICE(soa%weight(1:n), soa%cell_idx(1:n), soa%boundary_flag(1:n))
+    
     soa%data_on_device = .TRUE.
-#endif
     
   END SUBROUTINE soa_copy_to_device
 
 
   !---------------------------------------------------------------------------
-  !> @brief Copy particle data from device to host
+  !> @brief Copy particle data from device to host using OpenACC
   !> @param[inout] soa Particle SoA structure
   !---------------------------------------------------------------------------
   SUBROUTINE soa_copy_to_host(soa)
     TYPE(particle_soa_t), INTENT(INOUT) :: soa
     
-#ifdef GPU_ENABLED
     INTEGER(i8) :: n
     
     IF (.NOT. soa%is_allocated) RETURN
@@ -432,6 +372,12 @@ CONTAINS
     
     n = soa%count
     
+    ! OpenACC: update host with device data
+    !$ACC UPDATE HOST(soa%pos_x(1:n), soa%pos_y(1:n)) &
+    !$ACC   HOST(soa%px(1:n), soa%py(1:n), soa%pz(1:n)) &
+    !$ACC   HOST(soa%weight(1:n), soa%cell_idx(1:n), soa%boundary_flag(1:n))
+    
+    ! Copy to host mirror arrays
     soa%h_pos_x(1:n) = soa%pos_x(1:n)
     soa%h_pos_y(1:n) = soa%pos_y(1:n)
     soa%h_px(1:n) = soa%px(1:n)
@@ -440,7 +386,6 @@ CONTAINS
     soa%h_weight(1:n) = soa%weight(1:n)
     soa%h_cell_idx(1:n) = soa%cell_idx(1:n)
     soa%h_boundary_flag(1:n) = soa%boundary_flag(1:n)
-#endif
     
   END SUBROUTINE soa_copy_to_host
 
@@ -486,11 +431,9 @@ CONTAINS
     
     IF (.NOT. soa%is_allocated) RETURN
     
-#ifdef GPU_ENABLED
     IF (gpu_enabled .AND. soa%data_on_device) THEN
       CALL soa_copy_to_host(soa)
     END IF
-#endif
     
     n = soa%count
     j = 0
@@ -513,8 +456,7 @@ CONTAINS
     
     soa%count = j
     
-#ifndef GPU_ENABLED
-    ! CPU-only: also update main arrays
+    ! Update main arrays from host arrays
     soa%pos_x(1:j) = soa%h_pos_x(1:j)
     soa%pos_y(1:j) = soa%h_pos_y(1:j)
     soa%px(1:j) = soa%h_px(1:j)
@@ -523,7 +465,6 @@ CONTAINS
     soa%weight(1:j) = soa%h_weight(1:j)
     soa%cell_idx(1:j) = soa%h_cell_idx(1:j)
     soa%boundary_flag(1:j) = soa%h_boundary_flag(1:j)
-#endif
     
     soa%data_on_device = .FALSE.
     
@@ -548,11 +489,9 @@ CONTAINS
     
     IF (.NOT. soa%is_allocated) RETURN
     
-#ifdef GPU_ENABLED
     IF (gpu_enabled .AND. soa%data_on_device) THEN
       CALL soa_copy_to_host(soa)
     END IF
-#endif
     
     n = soa%count
     IF (n <= 1) RETURN
@@ -635,7 +574,7 @@ CONTAINS
     
     DEALLOCATE(count_arr, offset, sorted_idx, temp_real, temp_int)
     
-#ifndef GPU_ENABLED
+    ! Update main arrays from host arrays
     soa%pos_x(1:n) = soa%h_pos_x(1:n)
     soa%pos_y(1:n) = soa%h_pos_y(1:n)
     soa%px(1:n) = soa%h_px(1:n)
@@ -644,7 +583,6 @@ CONTAINS
     soa%weight(1:n) = soa%h_weight(1:n)
     soa%cell_idx(1:n) = soa%h_cell_idx(1:n)
     soa%boundary_flag(1:n) = soa%h_boundary_flag(1:n)
-#endif
     
     soa%data_on_device = .FALSE.
     
