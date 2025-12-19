@@ -73,7 +73,7 @@ privacy_pack = false
 
 # Enable visitors to edit pages?
 #   `repo` defines the repository URL. `editable` defines which page types can be edited.
-edit_page = {repo_url = "https://github.com/gcushen/hugo-academic", content_dir = "", repo_branch = "master", editable = {docs = false, page = false, post = false}}
+edit_page = {repo_url = "https://github.com/chenxingqiang/EPOCH-GPU", content_dir = "docs/content", repo_branch = "main", editable = {docs = true, page = false, post = false}}
 
 ############################
 ## Contact details
@@ -83,12 +83,12 @@ edit_page = {repo_url = "https://github.com/gcushen/hugo-academic", content_dir 
 ############################
 
 # Enter contact details (optional). To hide a field, clear it to "".
-email = "epochpic.contact@gmail.com"
+email = "joy6677@outlook.com"
 phone = ""
 
 # Address
 # For country_code, use the 2-letter ISO code (see https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2 )
-address = {street = "University of Warwick", city = "Coventry", region = "West Midlands", postcode = "CV4 7AL", country = "United Kingdom", country_code = "UK"}
+address = {street = "", city = "", region = "", postcode = "", country = "China", country_code = "CN"}
 
 # Geographic coordinates
 # To get your coordinates, right-click on Google Maps and choose "What's here?". The coords will show up at the bottom.

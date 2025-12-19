@@ -14,6 +14,11 @@
   weight = 20
 
 [[main]]
+  name = "GPU Guide"
+  url = "/gpu.html"
+  weight = 25
+
+[[main]]
   name = "User Guide"
   url = "/documentation.html"
   weight = 30
@@ -27,6 +32,11 @@
   name = "Publications"
   url = "/publication.html"
   weight = 40
+
+[[main]]
+  name = "GitHub"
+  url = "https://github.com/chenxingqiang/EPOCH-GPU"
+  weight = 45
 
 [[main]]
   name = "License"

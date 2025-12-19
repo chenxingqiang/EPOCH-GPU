@@ -1,3 +1,23 @@
+# EPOCH-GPU Contributors
+
+## GPU Acceleration Development
+
+Xingqiang Chen <joy6677@outlook.com>
+  - GPU acceleration architecture design
+  - OpenACC/CUDA Fortran implementation
+  - Boris pusher GPU kernel
+  - FDTD field solver GPU kernel
+  - Current deposition with atomic operations
+  - SoA particle data structures
+  - GPU test framework
+
+---
+
+## Original EPOCH Contributors
+
+The following contributors developed the original EPOCH code base
+(https://github.com/Warwick-Plasma/epoch):
+
 Alexander Blinne <A.Blinne@gsi.de>
 Alexander Seaton <A.Seaton@warwick.ac.uk>
 Alex Arefiev <alexey@austin.utexas.edu>

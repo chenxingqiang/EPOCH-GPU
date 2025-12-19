@@ -1,5 +1,21 @@
-EPOCH documentation is hosted at the following URL:
+EPOCH-GPU Documentation
+=======================
+
+GPU Acceleration Guide:
+https://github.com/chenxingqiang/EPOCH-GPU/tree/main/docs/content/gpu
+
+Original EPOCH documentation is hosted at:
 https://epochpic.github.io/
 
-Additional information may be found in the original user and developer manuals, found here:
+Additional information may be found in the original user and developer manuals:
 https://github.com/Warwick-Plasma/EPOCH_manuals/releases
+
+Repository Links:
+- EPOCH-GPU: https://github.com/chenxingqiang/EPOCH-GPU
+- Original EPOCH: https://github.com/Warwick-Plasma/epoch
+- SDF File Format: https://github.com/Warwick-Plasma/SDF
+
+Quick Start:
+  git clone --recursive https://github.com/chenxingqiang/EPOCH-GPU.git
+  cd EPOCH-GPU/epoch2d
+  make -f Makefile.gpu GPU_CC=cc70
