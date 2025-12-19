@@ -11,8 +11,6 @@ menu:
     weight: 8
 ---
 
-# Multi-GPU Support
-
 EPOCH-GPU supports multi-GPU simulations using GPU-aware MPI for efficient 
 inter-GPU communication.
 

@@ -11,8 +11,6 @@ menu:
     weight: 2
 ---
 
-# Prerequisites for EPOCH-GPU
-
 ## Hardware Requirements
 
 ### Supported GPUs

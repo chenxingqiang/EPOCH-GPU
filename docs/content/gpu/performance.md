@@ -11,8 +11,6 @@ menu:
     weight: 6
 ---
 
-# GPU Performance Tuning
-
 ## Benchmark Results (Tesla V100-32GB)
 
 ### 1D Performance

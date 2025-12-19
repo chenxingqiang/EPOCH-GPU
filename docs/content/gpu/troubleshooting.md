@@ -11,8 +11,6 @@ menu:
     weight: 7
 ---
 
-# Troubleshooting GPU Issues
-
 ## Compilation Errors
 
 ### "nvfortran: command not found"

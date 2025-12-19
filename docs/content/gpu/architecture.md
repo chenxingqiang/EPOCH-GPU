@@ -11,8 +11,6 @@ menu:
     weight: 5
 ---
 
-# GPU Module Architecture
-
 ## Directory Structure
 
 ```

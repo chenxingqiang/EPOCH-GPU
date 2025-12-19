@@ -11,8 +11,6 @@ menu:
     weight: 4
 ---
 
-# Running GPU Simulations
-
 ## Basic Usage
 
 EPOCH-GPU uses the same input deck format as standard EPOCH:

@@ -11,8 +11,6 @@ menu:
     weight: 3
 ---
 
-# Building EPOCH-GPU
-
 ## Clone the Repository
 
 ```bash

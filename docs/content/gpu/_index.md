@@ -18,8 +18,6 @@ menu:
     weight: 1
 ---
 
-# EPOCH-GPU: GPU-Accelerated Plasma Simulations
-
 EPOCH-GPU extends the EPOCH Particle-In-Cell code with NVIDIA GPU acceleration, 
 enabling high-performance plasma physics simulations on modern GPU hardware.
 
