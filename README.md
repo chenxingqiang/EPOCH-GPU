@@ -120,8 +120,8 @@ epoch1d/src/gpu/          epoch2d/src/gpu/          epoch3d/src/gpu/
 - [x] Makefile.gpu for all dimensions
 - [x] GPU integration tests (Fortran)
 - [x] Python test framework for GPU validation
-- [ ] GPU-aware MPI for multi-GPU support
-- [ ] Full EPOCH main loop integration
+- [x] GPU-aware MPI for multi-GPU support
+- [x] Full EPOCH main loop integration
 
 ## Running GPU Tests
 

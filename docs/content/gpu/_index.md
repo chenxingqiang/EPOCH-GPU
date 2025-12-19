@@ -53,5 +53,6 @@ enabling high-performance plasma physics simulations on modern GPU hardware.
 3. [Running GPU Simulations]({{< relref "running.md" >}})
 4. [GPU Architecture]({{< relref "architecture.md" >}})
 5. [Performance Tuning]({{< relref "performance.md" >}})
-6. [Troubleshooting]({{< relref "troubleshooting.md" >}})
+6. [Multi-GPU Support]({{< relref "multi_gpu.md" >}})
+7. [Troubleshooting]({{< relref "troubleshooting.md" >}})
 
