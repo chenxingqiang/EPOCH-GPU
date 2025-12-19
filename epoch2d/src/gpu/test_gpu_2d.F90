@@ -168,7 +168,7 @@ PROGRAM test_gpu_2d
     CALL interpolate_fields_to_particles_gpu(n_particles, pos_x, pos_y, &
                                  ex, ey, ez, bx, by, bz, &
                                  ex_p, ey_p, ez_p, bx_p, by_p, bz_p, &
-                                 nx_test, ny_test, ng, x_min, y_min, dx, dy)
+                                 x_min, y_min, dx, dy, nx_test, ny_test, ng)
   END DO
   !$ACC WAIT
   CALL CPU_TIME(end_time)
