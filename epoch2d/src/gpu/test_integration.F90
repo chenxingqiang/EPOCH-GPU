@@ -26,13 +26,15 @@ PROGRAM test_integration
   REAL(num), ALLOCATABLE :: ex_p(:), ey_p(:), ez_p(:)
   REAL(num), ALLOCATABLE :: bx_p(:), by_p(:), bz_p(:)
   
+  INTEGER :: ierr
+  
   WRITE(*,*) "============================================"
   WRITE(*,*) "   EPOCH-GPU Integration Test"
   WRITE(*,*) "============================================"
   
   ! Initialize GPU
-  CALL set_gpu_device(0)
-  CALL print_gpu_info()
+  ierr = gpu_init(0)
+  CALL gpu_print_device_info()
   
   ! Test parameters
   nx_test = 256
