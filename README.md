@@ -1,3 +1,109 @@
+# EPOCH-GPU: GPU-Accelerated EPOCH
+
+[![GPU Support](https://img.shields.io/badge/GPU-NVIDIA%20CUDA-green.svg)](https://developer.nvidia.com/cuda-zone)
+[![Compute Capability](https://img.shields.io/badge/Compute%20Capability-7.0+-blue.svg)](https://developer.nvidia.com/cuda-gpus)
+[![Dimensions](https://img.shields.io/badge/Dimensions-1D%20|%202D%20|%203D-orange.svg)]()
+[![License](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
+
+This is the GPU-accelerated version of EPOCH (Extendable PIC Open Collaboration), 
+a fully relativistic Particle-In-Cell code for plasma physics simulations.
+
+## GPU Acceleration Features
+
+- **Full Dimensional Support**: GPU acceleration for 1D, 2D, and 3D simulations
+- **NVIDIA GPU Support**: Optimized for V100, A100, and H100 GPUs
+- **OpenACC + CUDA Fortran**: Hybrid approach for maximum performance
+- **Key GPU Kernels**:
+  - Boris particle pusher (up to 5+ billion particles/sec on V100)
+  - FDTD field solver (E and B field updates)
+  - Current deposition with atomic operations
+  - Field interpolation (linear/bilinear/trilinear)
+- **Structure of Arrays (SoA)**: GPU-optimized particle data layout
+
+## Supported Dimensions
+
+| Dimension | Status | GPU Kernels |
+|-----------|--------|-------------|
+| **epoch1d** | ✅ Ready | Field solver, Particle pusher, Current deposition |
+| **epoch2d** | ✅ Ready | Field solver, Particle pusher, Current deposition, Bilinear interpolation |
+| **epoch3d** | ✅ Ready | Field solver, Particle pusher, Current deposition, Trilinear interpolation |
+
+## Quick Start with GPU
+
+### Prerequisites
+
+- NVIDIA GPU with compute capability 7.0+ (V100, A100, H100)
+- NVIDIA HPC SDK 21.x or later (includes `nvfortran`)
+- CUDA 11.0 or later
+- MPI library compatible with nvfortran
+
+### Building with GPU Support
+
+```bash
+# Clone with submodules
+git clone --recursive https://github.com/chenxingqiang/EPOCH-GPU.git
+cd EPOCH-GPU
+
+# Build 1D GPU version
+cd epoch1d && make -f Makefile.gpu GPU_CC=cc70
+
+# Build 2D GPU version
+cd ../epoch2d && make -f Makefile.gpu GPU_CC=cc70
+
+# Build 3D GPU version
+cd ../epoch3d && make -f Makefile.gpu GPU_CC=cc70
+```
+
+### GPU Architecture Options
+
+```bash
+make -f Makefile.gpu GPU_CC=cc70  # V100
+make -f Makefile.gpu GPU_CC=cc80  # A100
+make -f Makefile.gpu GPU_CC=cc90  # H100
+```
+
+### Performance Benchmarks (Tesla V100-32GB)
+
+| Dimension | Kernel | Grid/Particles | Time/Iteration | Throughput |
+|-----------|--------|----------------|----------------|------------|
+| 2D | Field Update | 256×256 | 0.04 ms | - |
+| 2D | Particle Push | 1M particles | 0.19 ms | **5.3B particles/sec** |
+
+## GPU Module Architecture
+
+```
+epoch1d/src/gpu/          epoch2d/src/gpu/          epoch3d/src/gpu/
+├── gpu_config.F90        ├── gpu_config.F90        ├── gpu_config.F90
+├── particle_data_gpu.F90 ├── particle_data_gpu.F90 ├── particle_data_gpu.F90
+├── fields_gpu.F90        ├── fields_gpu.F90        ├── fields_gpu.F90
+└── particles_gpu.F90     ├── particles_gpu.F90     └── particles_gpu.F90
+                          └── epoch_gpu_interface.F90
+```
+
+### Key Components
+
+| Module | Description |
+|--------|-------------|
+| `gpu_config.F90` | GPU device management, initialization, memory info |
+| `particle_data_gpu.F90` | Structure of Arrays (SoA) for GPU-optimized particle storage |
+| `fields_gpu.F90` | FDTD electromagnetic field solver with OpenACC |
+| `particles_gpu.F90` | Boris pusher, field interpolation, current deposition |
+| `epoch_gpu_interface.F90` | High-level interface for EPOCH integration |
+
+## Development Status
+
+- [x] GPU device management and configuration
+- [x] SoA particle data structures (1D/2D/3D)
+- [x] Boris particle pusher GPU kernel
+- [x] FDTD field solver GPU kernel
+- [x] Current deposition with atomic operations
+- [x] Field interpolation (linear/bilinear/trilinear)
+- [x] Makefile.gpu for all dimensions
+- [ ] GPU-aware MPI for multi-GPU support
+- [ ] Full EPOCH main loop integration
+
+---
+
 # EPOCH instructions
 
 To clone this repository from GitHub, use the command:

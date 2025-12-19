@@ -1,0 +1,204 @@
+# EPOCH-GPU Makefile
+# Build EPOCH with NVIDIA GPU acceleration support
+#
+# Usage:
+#   make -f Makefile.gpu                    # Build with GPU support
+#   make -f Makefile.gpu MODE=debug         # Debug build
+#   make -f Makefile.gpu GPU_CC=cc80        # Build for A100 GPU
+#   make -f Makefile.gpu clean              # Clean build
+#
+# Requirements:
+#   - NVIDIA HPC SDK 21.x or later (nvfortran compiler)
+#   - CUDA-capable GPU (compute capability 7.0+ recommended)
+#   - MPI library compatible with nvfortran
+
+#---------------------------------------------------------------------------
+# Configuration
+#---------------------------------------------------------------------------
+
+# GPU compute capability (V100=cc70, A100=cc80, H100=cc90)
+GPU_CC ?= cc70
+
+# Preprocessor define prefix
+D = -D
+
+#---------------------------------------------------------------------------
+# Compiler settings (NVIDIA HPC SDK)
+#---------------------------------------------------------------------------
+
+FC = mpifort
+FFLAGS = -O3 -r8 -acc -gpu=$(GPU_CC) -Minfo=accel
+
+ifeq ($(strip $(MODE)),debug)
+  FFLAGS = -O0 -g -r8 -acc -gpu=$(GPU_CC) -Minfo=accel -C -Mbounds -traceback
+endif
+
+#---------------------------------------------------------------------------
+# Directories
+#---------------------------------------------------------------------------
+
+SRCDIR = src
+OBJDIR = obj
+BINDIR = bin
+INCDIR = $(SRCDIR)/include
+GPU_SRCDIR = $(SRCDIR)/gpu
+SDF = ../SDF/FORTRAN
+
+#---------------------------------------------------------------------------
+# Module flags
+#---------------------------------------------------------------------------
+
+MODULEFLAG = -module $(OBJDIR) -I$(OBJDIR)
+FFLAGS += -I$(SDF)/include $(MODULEFLAG)
+LDFLAGS = $(FFLAGS) -L$(SDF)/lib -lsdf
+
+#---------------------------------------------------------------------------
+# Preprocessor flags
+#---------------------------------------------------------------------------
+
+DATE := $(shell date +%s)
+MACHINE := $(shell uname -n)
+-include $(SRCDIR)/COMMIT
+
+DEFINES = $(D)GPU_ENABLED
+PREPROFLAGS = $(DEFINES) $(D)_COMMIT='"$(COMMIT)"' $(D)_DATE=$(DATE) \
+  $(D)_MACHINE='"$(MACHINE)"' -I$(INCDIR)
+
+#---------------------------------------------------------------------------
+# Target
+#---------------------------------------------------------------------------
+
+TARGET = epoch2d_gpu
+FULLTARGET = $(BINDIR)/$(TARGET)
+
+#---------------------------------------------------------------------------
+# GPU Source files
+#---------------------------------------------------------------------------
+
+GPU_SRCFILES = gpu_config.F90 particle_data_gpu.F90 fields_gpu.F90 particles_gpu.F90 epoch_gpu_interface.F90
+
+#---------------------------------------------------------------------------
+# Main source files (same as CPU version)
+#---------------------------------------------------------------------------
+
+SRCFILES = background_collisions.F90 balance.F90 bethe_heitler.F90 \
+  boundary.F90 bremsstrahlung.F90 calc_df.F90 collisions.F90 \
+  collision_ionise.F90 constants.F90 current_smooth.F90 custom_deck.f90 \
+  custom_laser.f90 custom_parser.f90 deck.F90 deck_boundaries_block.f90 \
+  deck_bremsstrahlung_block.F90 deck_collision_block.F90 \
+  deck_constant_block.f90 deck_control_block.F90 deck_dist_fn_block.f90 \
+  deck_fields_block.f90 deck_injector_block.F90 deck_io_block.F90 \
+  deck_io_global_block.F90 deck_laser_block.f90 deck_part_from_file_block.F90 \
+  deck_particle_probe_block.F90 deck_qed_block.F90 deck_species_block.F90 \
+  deck_stencil_block.f90 deck_subset_block.F90 deck_window_block.f90 \
+  deltaf_loader.F90 diagnostics.F90 dist_fn.F90 epoch2d.F90 evaluate.F90 \
+  evaluator_blocks.F90 fields.f90 file_injectors.F90 finish.f90 helper.F90 \
+  ic_module.f90 injectors.F90 ionise.F90 iterators.F90 laser.f90 \
+  mpi_routines.F90 mpi_subtype_control.f90 numerics.f90 particle_id_hash.F90 \
+  particle_migration.F90 particle_pointer_advance.f90 particle_temperature.F90 \
+  particles.F90 partlist.F90 photons.F90 prefetch.F90 probes.F90 \
+  random_generator.f90 redblack_module.f90 setup.F90 shape_functions.F90 \
+  shared_data.F90 shunt.F90 simple_io.F90 split_particle.F90 stack.f90 \
+  strings.f90 strings_advanced.f90 terminal_controls.F90 timer.f90 \
+  tokenizer_blocks.f90 utilities.f90 version_data.F90 welcome.F90 window.F90
+
+#---------------------------------------------------------------------------
+# Object files
+#---------------------------------------------------------------------------
+
+GPU_OBJFILES = $(GPU_SRCFILES:.F90=.o)
+OBJFILES := $(SRCFILES:.f90=.o)
+OBJFILES := $(OBJFILES:.F90=.o)
+OBJFILES := $(GPU_OBJFILES) $(OBJFILES) epoch_source_info_dummy.o
+
+#---------------------------------------------------------------------------
+# VPATH
+#---------------------------------------------------------------------------
+
+VPATH = $(SRCDIR):$(SRCDIR)/deck:$(SRCDIR)/housekeeping:$(SRCDIR)/io:\
+  $(SRCDIR)/parser:$(SRCDIR)/physics_packages:$(SRCDIR)/user_interaction:\
+  $(GPU_SRCDIR):$(SDF)/src:$(OBJDIR)
+
+#---------------------------------------------------------------------------
+# Include files
+#---------------------------------------------------------------------------
+
+INCLUDES = $(INCDIR)/particle_head.inc $(INCDIR)/particle_to_grid.inc \
+  $(INCDIR)/bspline3/b_part.inc $(INCDIR)/bspline3/e_part.inc \
+  $(INCDIR)/bspline3/gx.inc $(INCDIR)/bspline3/gxfac.inc \
+  $(INCDIR)/bspline3/hx_dcell.inc \
+  $(INCDIR)/tophat/b_part.inc $(INCDIR)/tophat/e_part.inc \
+  $(INCDIR)/tophat/gx.inc $(INCDIR)/tophat/gxfac.inc \
+  $(INCDIR)/tophat/hx_dcell.inc \
+  $(INCDIR)/triangle/b_part.inc $(INCDIR)/triangle/e_part.inc \
+  $(INCDIR)/triangle/gx.inc $(INCDIR)/triangle/gxfac.inc \
+  $(INCDIR)/triangle/hx_dcell.inc
+
+#---------------------------------------------------------------------------
+# Build rules
+#---------------------------------------------------------------------------
+
+SDFMOD = $(SDF)/include/sdf.mod
+
+all: $(FULLTARGET)
+
+# Rule to build Fortran files
+%.o: %.f90
+	$(FC) -c $(FFLAGS) -o $(OBJDIR)/$@ $<
+
+%.o: %.F90
+	$(FC) -c $(FFLAGS) -o $(OBJDIR)/$@ $(PREPROFLAGS) $<
+
+$(FULLTARGET): $(SDFMOD) $(OBJFILES)
+	@mkdir -p $(BINDIR)
+	$(FC) -o $@ $(addprefix $(OBJDIR)/,$(OBJFILES)) $(LDFLAGS)
+	@echo ""
+	@echo "=================================================="
+	@echo "  EPOCH-GPU build complete!"
+	@echo "  Binary: $(FULLTARGET)"
+	@echo "  GPU:    $(GPU_CC)"
+	@echo "=================================================="
+
+$(SDFMOD):
+	$(MAKE) COMPILER=nvhpc -C $(SDF)
+
+$(OBJDIR):
+	@mkdir -p $(OBJDIR)
+
+$(OBJFILES): | $(OBJDIR)
+
+#---------------------------------------------------------------------------
+# Clean rules
+#---------------------------------------------------------------------------
+
+clean:
+	rm -rf $(OBJDIR) $(BINDIR)
+
+cleanall: clean
+	$(MAKE) -C $(SDF) cleanall
+
+#---------------------------------------------------------------------------
+# GPU module dependencies
+#---------------------------------------------------------------------------
+
+gpu_config.o: gpu_config.F90
+particle_data_gpu.o: particle_data_gpu.F90 gpu_config.o
+fields_gpu.o: fields_gpu.F90 gpu_config.o
+particles_gpu.o: particles_gpu.F90 gpu_config.o
+epoch_gpu_interface.o: epoch_gpu_interface.F90 gpu_config.o fields_gpu.o particles_gpu.o particle_data_gpu.o
+
+#---------------------------------------------------------------------------
+# Main code dependencies (subset - GPU modules first)
+#---------------------------------------------------------------------------
+
+constants.o: constants.F90 $(SDFMOD)
+shared_data.o: shared_data.F90 constants.o $(SDFMOD)
+boundary.o: boundary.F90 shared_data.o
+fields.o: fields.f90 boundary.o
+particles.o: particles.F90 boundary.o
+
+# Note: Full dependency tree inherited from original Makefile
+# GPU modules are compiled first and available to all other modules
+
+.PHONY: all clean cleanall
+

@@ -1,0 +1,65 @@
+# GPU compilation settings for EPOCH
+# Include this file in the main Makefile when compiling with GPU support
+#
+# Usage: make COMPILER=nvhpc GPU=1
+#        make COMPILER=nvhpc GPU=1 MODE=debug
+#
+# Requirements: NVIDIA HPC SDK 21.x or later
+
+#---------------------------------------------------------------------------
+# GPU compiler flags (NVIDIA HPC SDK / nvfortran)
+#---------------------------------------------------------------------------
+
+# NVIDIA HPC SDK compiler (nvfortran, formerly pgfortran)
+ifeq ($(strip $(COMPILER)),nvhpc)
+  # GPU compute capability (default: cc70 for V100, cc80 for A100)
+  GPU_CC ?= cc70
+  
+  ifeq ($(strip $(GPU)),1)
+    # GPU-enabled build with OpenACC
+    FFLAGS = -O3 -acc -gpu=$(GPU_CC) -Minfo=accel -r8
+    DEFINES += $(D)GPU_ENABLED
+    GPU_LDFLAGS = -acc -gpu=$(GPU_CC)
+  else
+    # CPU-only build with nvfortran
+    FFLAGS = -O3 -r8 -fast
+  endif
+  
+  ifeq ($(strip $(MODE)),debug)
+    FFLAGS = -O0 -g -C -Mbounds -traceback -r8
+    ifeq ($(strip $(GPU)),1)
+      FFLAGS += -acc -gpu=$(GPU_CC) -Minfo=accel
+    endif
+  endif
+  
+  MODULEFLAG = -module $(OBJDIR)
+  
+  # MPI wrapper for NVIDIA HPC SDK
+  MPIF90 ?= mpifort
+endif
+
+#---------------------------------------------------------------------------
+# GPU source files
+#---------------------------------------------------------------------------
+
+GPU_SRCDIR = src/gpu
+GPU_SRCFILES = gpu_config.F90 particle_data_gpu.F90 fields_gpu.F90 particles_gpu.F90
+
+# Object files from GPU sources
+GPU_OBJFILES = $(GPU_SRCFILES:.F90=.o)
+
+#---------------------------------------------------------------------------
+# GPU VPATH
+#---------------------------------------------------------------------------
+
+GPU_VPATH = $(GPU_SRCDIR)
+
+#---------------------------------------------------------------------------
+# GPU module dependencies
+#---------------------------------------------------------------------------
+
+# gpu_config.o: no dependencies (base module)
+# particle_data_gpu.o: gpu_config.o
+# fields_gpu.o: gpu_config.o
+# particles_gpu.o: gpu_config.o
+
