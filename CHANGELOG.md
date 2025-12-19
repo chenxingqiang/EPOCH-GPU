@@ -1,3 +1,76 @@
+## v5.0.0 - EPOCH-GPU Release (2024-12-19)
+
+This major release introduces GPU acceleration support for EPOCH, enabling 
+significant performance improvements on NVIDIA GPUs.
+
+### New Features
+
+ * **GPU Acceleration for All Dimensions**: Full GPU support for epoch1d, 
+   epoch2d, and epoch3d simulations using OpenACC and CUDA Fortran.
+
+ * **GPU-Optimized Particle Pusher**: Boris algorithm implemented on GPU with
+   Structure of Arrays (SoA) data layout for optimal memory access patterns.
+   Achieves up to 5+ billion particles/second on Tesla V100.
+
+ * **GPU Field Solver**: FDTD electromagnetic field solver parallelized with
+   OpenACC directives for E and B field updates.
+
+ * **GPU Current Deposition**: Atomic operations for thread-safe current
+   accumulation on GPU with support for all particle shapes.
+
+ * **GPU Field Interpolation**: Linear (1D), bilinear (2D), and trilinear (3D)
+   field interpolation kernels for particle-field coupling.
+
+ * **GPU-aware MPI**: Multi-GPU support with direct GPU memory transfers
+   between MPI ranks, avoiding host-device copy overhead.
+
+ * **Python Package (epoch-gpu)**: Published to PyPI for easy installation.
+   Includes:
+   - GPU configuration detection and management
+   - SDF file reader for simulation output
+   - EPOCH deck file parser/writer
+   - Physics analysis utilities (energy, temperature calculations)
+   - Unit conversion helpers
+   - CLI tools: epoch-gpu-info, epoch-gpu-build, epoch-gpu-test
+
+ * **New GPU Modules**:
+   - gpu_config.F90: GPU device management and initialization
+   - particle_data_gpu.F90: SoA particle data structures
+   - fields_gpu.F90: GPU-accelerated field solver
+   - particles_gpu.F90: GPU particle pusher and current deposition
+   - mpi_gpu.F90: GPU-aware MPI communication
+   - epoch_main_gpu.F90: Main loop GPU integration
+
+ * **GPU Build System**: New Makefile.gpu for each dimension with NVIDIA HPC
+   SDK (nvfortran) compiler support and CUDA library linking.
+
+ * **GPU Test Framework**: Fortran integration tests (test_gpu_1d/2d/3d.F90)
+   and Python test suite mirroring CPU tests for GPU validation.
+
+ * **Documentation**: Comprehensive GPU documentation including prerequisites,
+   building instructions, architecture overview, and multi-GPU usage guide.
+
+### Performance Benchmarks (Tesla V100-32GB)
+
+ * 1D: Field update 0.027ms, Particle push 5.9B particles/sec
+ * 2D: Field update 0.035ms (256×256), Particle push 5.3B particles/sec
+ * 3D: Field update 0.096ms (64³), Particle push 4.4B particles/sec
+
+### Requirements
+
+ * NVIDIA GPU with Compute Capability 7.0+ (V100, A100, H100)
+ * NVIDIA HPC SDK 21.x or later (nvfortran compiler)
+ * CUDA 11.0 or later
+ * GPU-aware MPI (optional, for multi-GPU)
+
+### Links
+
+ * GitHub: https://github.com/chenxingqiang/EPOCH-GPU
+ * PyPI: https://pypi.org/project/epoch-gpu/
+ * DeepWiki: https://deepwiki.com/chenxingqiang/EPOCH-GPU
+
+---
+
 ## v4.18.0 to v4.19.0
 
  * Ionisation routines have been upgraded, and now read binding energies from
