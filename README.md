@@ -8,6 +8,7 @@
 [![License](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![GitHub](https://img.shields.io/badge/GitHub-chenxingqiang%2FEPOCH--GPU-blue.svg)](https://github.com/chenxingqiang/EPOCH-GPU)
 [![Upstream](https://img.shields.io/badge/Upstream-Warwick--Plasma%2Fepoch-lightgrey.svg)](https://github.com/Warwick-Plasma/epoch)
+[![DeepWiki](https://img.shields.io/badge/DeepWiki-chenxingqiang%2FEPOCH--GPU-blue.svg?logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNNCAxOWguNmMuNCAwIC42LS4xLjgtLjRsMTEuMi0xNy42Yy4yLS4zIDAtLjQtLjQtLjRIOGwtLjIuMS0xMC41IDE3Yy0uMS4xIDAgLjMuMS4zeiIvPjxwYXRoIGQ9Ik00IDE5aDEyLjVjLjQgMCAuNi0uMi43LS41bDIuNS02LjhjLjEtLjMgMC0uNS0uNC0uNUgxMWwtLjIuMS03LjUgNy41Yy0uMS4xIDAgLjIuMS4yeiIvPjwvc3ZnPg==)](https://deepwiki.com/chenxingqiang/EPOCH-GPU)
 
 This is the GPU-accelerated version of EPOCH (Extendable PIC Open Collaboration), 
 a fully relativistic Particle-In-Cell code for plasma physics simulations.
@@ -270,6 +271,8 @@ subdirectory.
 | Resource | URL |
 |----------|-----|
 | **EPOCH-GPU (This repo)** | https://github.com/chenxingqiang/EPOCH-GPU |
+| **DeepWiki Documentation** | https://deepwiki.com/chenxingqiang/EPOCH-GPU |
+| **PyPI Package** | https://pypi.org/project/epoch-gpu/ |
 | Original EPOCH | https://github.com/Warwick-Plasma/epoch |
 | EPOCH Releases | https://github.com/Warwick-Plasma/epoch/releases |
 | EPOCH Documentation | https://epochpic.github.io/ |
