@@ -1,3 +1,6 @@
 [submodule "SDF"]
 	path = SDF
 	url = https://github.com/epochpic/SDF.git
+[submodule "docs/themes/academic"]
+	path = docs/themes/academic
+	url = https://github.com/gcushen/hugo-academic.git
