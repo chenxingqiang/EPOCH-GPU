@@ -165,7 +165,7 @@ PROGRAM test_gpu_2d
   
   CALL CPU_TIME(start_time)
   DO i = 1, 100
-    CALL interpolate_fields_gpu(n_particles, pos_x, pos_y, &
+    CALL interpolate_fields_to_particles_gpu(n_particles, pos_x, pos_y, &
                                  ex, ey, ez, bx, by, bz, &
                                  ex_p, ey_p, ez_p, bx_p, by_p, bz_p, &
                                  nx_test, ny_test, ng, x_min, y_min, dx, dy)
