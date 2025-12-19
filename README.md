@@ -1,5 +1,7 @@
 # EPOCH-GPU: GPU-Accelerated EPOCH
 
+[![PyPI version](https://img.shields.io/pypi/v/epoch-gpu.svg)](https://pypi.org/project/epoch-gpu/)
+[![Python](https://img.shields.io/pypi/pyversions/epoch-gpu.svg)](https://pypi.org/project/epoch-gpu/)
 [![GPU Support](https://img.shields.io/badge/GPU-NVIDIA%20CUDA-green.svg)](https://developer.nvidia.com/cuda-zone)
 [![Compute Capability](https://img.shields.io/badge/Compute%20Capability-7.0+-blue.svg)](https://developer.nvidia.com/cuda-gpus)
 [![Dimensions](https://img.shields.io/badge/Dimensions-1D%20|%202D%20|%203D-orange.svg)]()
@@ -87,6 +89,87 @@ make -f Makefile.gpu GPU_CC=cc90  # H100
 | **3D** | Particle Push | 500K particles | 0.11 ms | **4.4B particles/sec** |
 | **3D** | Field Interpolation | 500K particles | 0.35 ms | - |
 | **3D** | Current Deposition | 500K particles | 0.38 ms | - |
+
+## Python Package
+
+EPOCH-GPU is also available as a Python package on PyPI for easy installation and integration.
+
+[![PyPI version](https://img.shields.io/pypi/v/epoch-gpu.svg)](https://pypi.org/project/epoch-gpu/)
+[![Python](https://img.shields.io/pypi/pyversions/epoch-gpu.svg)](https://pypi.org/project/epoch-gpu/)
+
+### Installation
+
+```bash
+# Install from PyPI
+pip install epoch-gpu
+
+# Or install from source
+git clone https://github.com/chenxingqiang/EPOCH-GPU.git
+cd EPOCH-GPU
+pip install -e .
+```
+
+### CLI Tools
+
+```bash
+# Display GPU configuration and device info
+epoch-gpu-info
+
+# Build EPOCH-GPU
+epoch-gpu-build --dimension 2d --jobs 4
+
+# Run GPU tests
+epoch-gpu-test --dimension all
+```
+
+### Python API
+
+```python
+import epoch_gpu
+
+# Check GPU configuration
+from epoch_gpu import GPUConfig, get_gpu_info
+config = GPUConfig()
+config.print_info()
+
+# Read SDF output files
+from epoch_gpu.io import SDFFile
+with SDFFile("0001.sdf") as sdf:
+    ex = sdf["Electric Field/Ex"]
+    print(ex.data.shape)
+
+# Parse EPOCH deck files
+from epoch_gpu.utils import DeckFile
+deck = DeckFile("input.deck")
+deck['control']['nx'] = 1024
+deck.write("modified.deck")
+
+# Physics calculations
+from epoch_gpu.analysis import calculate_field_energy
+energy = calculate_field_energy(ex, ey, ez, bx, by, bz, dx, dy)
+
+# Unit conversions
+from epoch_gpu.utils import plasma_frequency, debye_length
+omega_p = plasma_frequency(n_e=1e20)  # rad/s
+lambda_d = debye_length(n_e=1e20, T_e=1e6)  # meters
+```
+
+### Package Structure
+
+```
+epoch_gpu/
+├── __init__.py          # GPUConfig, get_gpu_info
+├── config.py            # GPU detection and configuration
+├── builder.py           # Build utilities for EPOCH-GPU
+├── cli.py               # Command-line interface tools
+├── io/
+│   └── sdf_reader.py    # SDF file reader for simulation output
+├── analysis/
+│   └── diagnostics.py   # Energy, temperature calculations
+└── utils/
+    ├── units.py         # Unit conversion, plasma physics formulas
+    └── deck.py          # EPOCH deck file parser/writer
+```
 
 ## GPU Module Architecture
 
