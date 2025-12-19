@@ -1,0 +1,89 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "epoch-gpu"
+version = "1.0.0"
+description = "GPU-accelerated Particle-In-Cell code for plasma physics simulations"
+readme = "README.md"
+license = {text = "GPL-3.0"}
+authors = [
+    {name = "EPOCH-GPU Development Team"},
+    {name = "Original EPOCH: Keith Bennett", email = "k.bennett@warwick.ac.uk"},
+]
+maintainers = [
+    {name = "Xingqiang Chen", email = "chenxingqiang@gmail.com"},
+]
+keywords = [
+    "plasma",
+    "physics",
+    "particle-in-cell",
+    "pic",
+    "gpu",
+    "cuda",
+    "openacc",
+    "simulation",
+    "hpc",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: GPU :: NVIDIA CUDA",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Fortran",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "numpy>=1.20.0",
+    "matplotlib>=3.3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=6.0",
+    "pytest-cov",
+    "black",
+    "isort",
+    "flake8",
+]
+docs = [
+    "sphinx",
+    "sphinx-rtd-theme",
+]
+
+[project.urls]
+Homepage = "https://github.com/chenxingqiang/EPOCH-GPU"
+Documentation = "https://github.com/chenxingqiang/EPOCH-GPU#readme"
+Repository = "https://github.com/chenxingqiang/EPOCH-GPU.git"
+Issues = "https://github.com/chenxingqiang/EPOCH-GPU/issues"
+Changelog = "https://github.com/chenxingqiang/EPOCH-GPU/blob/main/CHANGELOG.md"
+
+[project.scripts]
+epoch-gpu-info = "epoch_gpu.cli:gpu_info"
+epoch-gpu-test = "epoch_gpu.cli:run_tests"
+epoch-gpu-build = "epoch_gpu.cli:build_epoch"
+
+[tool.setuptools]
+packages = ["epoch_gpu", "epoch_gpu.io", "epoch_gpu.analysis", "epoch_gpu.utils"]
+package-dir = {"" = "python"}
+
+[tool.setuptools.package-data]
+epoch_gpu = ["*.deck"]
+
+[tool.black]
+line-length = 88
+target-version = ['py38', 'py39', 'py310', 'py311']
+
+[tool.isort]
+profile = "black"
+line_length = 88
+
