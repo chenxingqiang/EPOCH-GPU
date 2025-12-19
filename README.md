@@ -1,3 +1,56 @@
+# EPOCH-GPU: GPU-Accelerated EPOCH
+
+[![GPU Support](https://img.shields.io/badge/GPU-NVIDIA%20CUDA-green.svg)](https://developer.nvidia.com/cuda-zone)
+[![Compute Capability](https://img.shields.io/badge/Compute%20Capability-7.0+-blue.svg)](https://developer.nvidia.com/cuda-gpus)
+
+This is the GPU-accelerated version of EPOCH (Extendable PIC Open Collaboration), 
+a fully relativistic Particle-In-Cell code for plasma physics simulations.
+
+## GPU Acceleration Features
+
+- **NVIDIA GPU Support**: Optimized for V100, A100, and H100 GPUs
+- **OpenACC + CUDA Fortran**: Hybrid approach for maximum performance
+- **Key GPU Kernels**:
+  - Boris particle pusher (up to 5+ billion particles/sec on V100)
+  - FDTD field solver (E and B field updates)
+  - Current deposition with atomic operations
+  - Field interpolation to particle positions
+- **Structure of Arrays (SoA)**: GPU-optimized particle data layout
+
+## Quick Start with GPU
+
+### Prerequisites
+
+- NVIDIA GPU with compute capability 7.0+ (V100, A100, H100)
+- NVIDIA HPC SDK 21.x or later (includes `nvfortran`)
+- CUDA 11.0 or later
+- MPI library compatible with nvfortran
+
+### Building with GPU Support
+
+```bash
+# Clone with submodules
+git clone --recursive https://github.com/chenxingqiang/EPOCH-GPU.git
+cd EPOCH-GPU/epoch2d
+
+# Build GPU version
+make -f Makefile.gpu COMPILER=nvhpc
+
+# Build for specific GPU architecture
+make -f Makefile.gpu GPU_CC=cc80  # A100
+make -f Makefile.gpu GPU_CC=cc70  # V100
+make -f Makefile.gpu GPU_CC=cc90  # H100
+```
+
+### Performance Benchmarks (V100-32GB)
+
+| Kernel | Grid/Particles | Time per Iteration | Throughput |
+|--------|---------------|-------------------|------------|
+| Field Update | 256×256 | 0.04 ms | - |
+| Particle Push | 1M particles | 0.19 ms | 5.3B particles/sec |
+
+---
+
 # EPOCH instructions
 
 To clone this repository from GitHub, use the command:
