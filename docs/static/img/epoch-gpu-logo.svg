@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 60">
+  <defs>
+    <linearGradient id="gpuGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#76b900;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00a651;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="epochGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#4169E1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1E90FF;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="300" height="60" fill="transparent"/>
+  
+  <!-- EPOCH text -->
+  <text x="10" y="42" font-family="Arial Black, Arial, sans-serif" font-size="36" font-weight="bold" fill="url(#epochGrad)">
+    EPOCH
+  </text>
+  
+  <!-- GPU badge -->
+  <rect x="175" y="12" width="70" height="36" rx="6" ry="6" fill="url(#gpuGrad)"/>
+  <text x="210" y="38" font-family="Arial Black, Arial, sans-serif" font-size="22" font-weight="bold" fill="white" text-anchor="middle">
+    GPU
+  </text>
+  
+  <!-- Stylized GPU chip icon -->
+  <g transform="translate(255, 15)">
+    <rect x="0" y="5" width="30" height="25" rx="3" fill="#333"/>
+    <rect x="5" y="10" width="20" height="15" fill="#76b900"/>
+    <!-- Connection pins -->
+    <rect x="-3" y="10" width="6" height="3" fill="#666"/>
+    <rect x="-3" y="17" width="6" height="3" fill="#666"/>
+    <rect x="-3" y="24" width="6" height="3" fill="#666"/>
+    <rect x="27" y="10" width="6" height="3" fill="#666"/>
+    <rect x="27" y="17" width="6" height="3" fill="#666"/>
+    <rect x="27" y="24" width="6" height="3" fill="#666"/>
+    <rect x="8" y="2" width="3" height="6" fill="#666"/>
+    <rect x="15" y="2" width="3" height="6" fill="#666"/>
+    <rect x="22" y="2" width="3" height="6" fill="#666"/>
+    <rect x="8" y="27" width="3" height="6" fill="#666"/>
+    <rect x="15" y="27" width="3" height="6" fill="#666"/>
+    <rect x="22" y="27" width="3" height="6" fill="#666"/>
+  </g>
+</svg>
+

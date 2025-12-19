@@ -50,4 +50,4 @@ subtitle = ""
  css_class = ""
 +++
 
-<center><img src="/img/epoch-logo-large.png" width="70%"></center>
+<center><img src="/img/epoch-gpu-logo-large.svg" width="70%"></center>
