@@ -6,7 +6,7 @@ active = true  # Activate this widget? true/false
 weight = 130  # Order that this section will appear.
 
 title = "Contact"
-subtitle = ""
+subtitle = "EPOCH-GPU Development Team"
 
 # Automatically link email and phone?
 autolink = true
@@ -18,3 +18,15 @@ autolink = true
 email_form = 0
 +++
 
+## EPOCH-GPU
+
+For GPU acceleration specific questions:
+- **GitHub Issues**: [EPOCH-GPU Issues](https://github.com/chenxingqiang/EPOCH-GPU/issues)
+- **Email**: joy6677@outlook.com
+
+## Original EPOCH
+
+For general EPOCH questions:
+- **EPOCH Documentation**: [epochpic.github.io](https://epochpic.github.io/)
+- **EPOCH GitHub**: [Warwick-Plasma/epoch](https://github.com/Warwick-Plasma/epoch)
+- **Email**: epochpic.contact@gmail.com

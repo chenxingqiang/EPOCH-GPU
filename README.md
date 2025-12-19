@@ -4,9 +4,14 @@
 [![Compute Capability](https://img.shields.io/badge/Compute%20Capability-7.0+-blue.svg)](https://developer.nvidia.com/cuda-gpus)
 [![Dimensions](https://img.shields.io/badge/Dimensions-1D%20|%202D%20|%203D-orange.svg)]()
 [![License](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
+[![GitHub](https://img.shields.io/badge/GitHub-chenxingqiang%2FEPOCH--GPU-blue.svg)](https://github.com/chenxingqiang/EPOCH-GPU)
+[![Upstream](https://img.shields.io/badge/Upstream-Warwick--Plasma%2Fepoch-lightgrey.svg)](https://github.com/Warwick-Plasma/epoch)
 
 This is the GPU-accelerated version of EPOCH (Extendable PIC Open Collaboration), 
 a fully relativistic Particle-In-Cell code for plasma physics simulations.
+
+> **Fork Information**: This project is forked from [Warwick-Plasma/epoch](https://github.com/Warwick-Plasma/epoch) 
+> and extends it with NVIDIA GPU acceleration support.
 
 ## GPU Acceleration Features
 
@@ -41,6 +46,10 @@ a fully relativistic Particle-In-Cell code for plasma physics simulations.
 
 ```bash
 # Clone with submodules
+git clone --recursive git@github.com:chenxingqiang/EPOCH-GPU.git
+cd EPOCH-GPU
+
+# Or use HTTPS
 git clone --recursive https://github.com/chenxingqiang/EPOCH-GPU.git
 cd EPOCH-GPU
 
@@ -66,8 +75,18 @@ make -f Makefile.gpu GPU_CC=cc90  # H100
 
 | Dimension | Kernel | Grid/Particles | Time/Iteration | Throughput |
 |-----------|--------|----------------|----------------|------------|
-| 2D | Field Update | 256×256 | 0.04 ms | - |
-| 2D | Particle Push | 1M particles | 0.19 ms | **5.3B particles/sec** |
+| **1D** | Field Update | 1024 cells | 0.027 ms | - |
+| **1D** | Particle Push | 1M particles | 0.17 ms | **5.9B particles/sec** |
+| **1D** | Field Interpolation | 1M particles | 0.097 ms | - |
+| **1D** | Current Deposition | 1M particles | 0.15 ms | - |
+| **2D** | Field Update | 256×256 | 0.035 ms | 1.9B cells/sec |
+| **2D** | Particle Push | 1M particles | 0.19 ms | **5.3B particles/sec** |
+| **2D** | Field Interpolation | 1M particles | 0.11 ms | - |
+| **2D** | Current Deposition | 1M particles | 0.49 ms | - |
+| **3D** | Field Update | 64×64×64 | 0.096 ms | 2.7B cells/sec |
+| **3D** | Particle Push | 500K particles | 0.11 ms | **4.4B particles/sec** |
+| **3D** | Field Interpolation | 500K particles | 0.35 ms | - |
+| **3D** | Current Deposition | 500K particles | 0.38 ms | - |
 
 ## GPU Module Architecture
 
@@ -99,14 +118,59 @@ epoch1d/src/gpu/          epoch2d/src/gpu/          epoch3d/src/gpu/
 - [x] Current deposition with atomic operations
 - [x] Field interpolation (linear/bilinear/trilinear)
 - [x] Makefile.gpu for all dimensions
+- [x] GPU integration tests (Fortran)
+- [x] Python test framework for GPU validation
 - [ ] GPU-aware MPI for multi-GPU support
 - [ ] Full EPOCH main loop integration
 
+## Running GPU Tests
+
+### Fortran Integration Tests
+
+```bash
+# On GPU server, compile and run tests
+cd epoch1d/src/gpu && ./test_gpu_1d
+cd epoch2d/src/gpu && ./test_gpu_2d
+cd epoch3d/src/gpu && ./test_gpu_3d
+```
+
+### Python Test Framework
+
+```bash
+# Run all GPU tests
+python run_gpu_tests.py
+
+# Run specific dimension tests
+python run_gpu_tests.py 1d
+python run_gpu_tests.py 2d 3d
+
+# Verbose output
+python run_gpu_tests.py -v
+```
+
+### Test Directories
+
+```
+epoch1d/tests_gpu/     # 1D GPU tests (kernels, two-stream)
+epoch2d/tests_gpu/     # 2D GPU tests (kernels, Maxwell, laser, particles)
+epoch3d/tests_gpu/     # 3D GPU tests (kernels, Maxwell, laser)
+```
+
+## Repository Information
+
+- **GitHub**: https://github.com/chenxingqiang/EPOCH-GPU
+- **Upstream**: https://github.com/Warwick-Plasma/epoch
+- **Author**: Xingqiang Chen
+- **License**: GPLv3
+
 ---
 
-# EPOCH instructions
+# Original EPOCH Instructions
 
-To clone this repository from GitHub, use the command:
+> **Note**: The following instructions are from the original EPOCH project.
+> For GPU-accelerated version, use `https://github.com/chenxingqiang/EPOCH-GPU.git` instead.
+
+To clone the original CPU-only EPOCH from GitHub, use the command:
 
 ```
   git clone --recursive https://github.com/Warwick-Plasma/epoch.git
@@ -118,19 +182,18 @@ subdirectory used for writing the data.
 Do not use the use the "Download zip" buttons, as they will miss the SDF
 subdirectory.
 
-A list of the EPOCH releases may be found 
-[here](https://github.com/Warwick-Plasma/epoch/releases)
+### Useful Links
 
-EPOCH documentation is currently hosted on 
-[https://epochpic.github.io/](https://epochpic.github.io/)
-
-Users and developers may also find the original EPOCH manuals useful, which
-are hosted [here](https://github.com/Warwick-Plasma/EPOCH_manuals/releases)
+| Resource | URL |
+|----------|-----|
+| **EPOCH-GPU (This repo)** | https://github.com/chenxingqiang/EPOCH-GPU |
+| Original EPOCH | https://github.com/Warwick-Plasma/epoch |
+| EPOCH Releases | https://github.com/Warwick-Plasma/epoch/releases |
+| EPOCH Documentation | https://epochpic.github.io/ |
+| EPOCH Manuals | https://github.com/Warwick-Plasma/EPOCH_manuals/releases |
 
 All EPOCH development is carried out using the [git](https://git-scm.com)
-revision control system. The master repository is hosted on a web-based
-collaborative development site
-[here](https://github.com/Warwick-Plasma/epoch)
+revision control system.
 
 Further details on this are provided below.
 
@@ -252,18 +315,52 @@ such plugins.
 
 ## WORKING WITH THE GIT REPOSITORY
 
-For more advanced users, the code is also hosted on a git repository. There is
-quite a steep learning curve for using git, so using this repository is only
-recommended for more advanced users who are comfortable that they can deal with
-a "git conflict".
+### EPOCH-GPU Repository
 
-One other added complication, is that the EPOCH repository also uses git
-submodules for tracking the SDF file format. This adds an extra source of
-possible issues. However, once a workflow is established it can all be quite
-straightforward to work with.
+```bash
+# Clone EPOCH-GPU with submodules
+git clone --recursive git@github.com:chenxingqiang/EPOCH-GPU.git
 
-To perform an initial checkout of the code using git, you should issue the
-following command:
+# Or use HTTPS
+git clone --recursive https://github.com/chenxingqiang/EPOCH-GPU.git
+
+# Setup upstream remote for syncing with original EPOCH
+cd EPOCH-GPU
+git remote add upstream https://github.com/Warwick-Plasma/epoch.git
+```
+
+### Syncing with Upstream EPOCH
+
+```bash
+# Fetch latest changes from upstream
+git fetch upstream
+
+# Merge upstream changes (be careful with conflicts)
+git merge upstream/main
+
+# Update submodules
+git submodule update --recursive
+```
+
+### Branch Strategy
+
+- `main` - Stable GPU-accelerated version
+- `gpu-dev` - Active GPU development
+- `upstream-sync` - For merging upstream EPOCH updates
+
+### Contributing
+
+1. Fork this repository
+2. Create a feature branch: `git checkout -b feature/your-feature`
+3. Commit changes: `git commit -am 'Add your feature'`
+4. Push to branch: `git push origin feature/your-feature`
+5. Submit a Pull Request
+
+---
+
+## Original EPOCH Git Workflow
+
+For users who want to work with the original CPU-only EPOCH:
 
 ```
   git clone --recursive https://github.com/Warwick-Plasma/epoch.git

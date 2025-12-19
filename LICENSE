@@ -1,3 +1,38 @@
+================================================================================
+                         EPOCH-GPU LICENSE NOTICE
+================================================================================
+
+EPOCH-GPU: GPU-Accelerated EPOCH
+Copyright (C) 2024 Xingqiang Chen <joy6677@outlook.com>
+
+This project is a derivative work based on:
+  EPOCH (Extendable PIC Open Collaboration)
+  Copyright (C) 2010-2024 University of Warwick
+  Original Repository: https://github.com/Warwick-Plasma/epoch
+
+EPOCH-GPU extends the original EPOCH code with NVIDIA GPU acceleration support
+using OpenACC and CUDA Fortran. All GPU-specific code in the following 
+directories is new work:
+  - epoch1d/src/gpu/
+  - epoch2d/src/gpu/
+  - epoch3d/src/gpu/
+  - epoch*/tests_gpu/
+  - epoch*/Makefile.gpu
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version.
+
+As required by GPLv3 Section 5, this derivative work:
+  a) Carries prominent notices stating that it has been modified
+  b) Is released under this License (GPLv3)
+  c) Makes available the complete source code
+
+Repository: https://github.com/chenxingqiang/EPOCH-GPU
+
+================================================================================
+
                     GNU GENERAL PUBLIC LICENSE
                        Version 3, 29 June 2007
 
