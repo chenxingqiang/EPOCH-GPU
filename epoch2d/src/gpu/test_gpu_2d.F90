@@ -27,7 +27,7 @@ PROGRAM test_gpu_2d
   REAL(num), ALLOCATABLE :: pos_x(:), pos_y(:)
   REAL(num), ALLOCATABLE :: pos_x_old(:), pos_y_old(:)
   REAL(num), ALLOCATABLE :: px(:), py(:), pz(:)
-  REAL(num), ALLOCATABLE :: weight(:)
+  REAL(num) :: weight
   REAL(num), ALLOCATABLE :: ex_p(:), ey_p(:), ez_p(:)
   REAL(num), ALLOCATABLE :: bx_p(:), by_p(:), bz_p(:)
   
@@ -85,7 +85,7 @@ PROGRAM test_gpu_2d
   ALLOCATE(pos_x(n_particles), pos_y(n_particles))
   ALLOCATE(pos_x_old(n_particles), pos_y_old(n_particles))
   ALLOCATE(px(n_particles), py(n_particles), pz(n_particles))
-  ALLOCATE(weight(n_particles))
+  weight = 1.0e10_num
   ALLOCATE(ex_p(n_particles), ey_p(n_particles), ez_p(n_particles))
   ALLOCATE(bx_p(n_particles), by_p(n_particles), bz_p(n_particles))
   
@@ -96,7 +96,6 @@ PROGRAM test_gpu_2d
     px(i) = 1.0e-24_num * SIN(REAL(i, num))
     py(i) = 1.0e-24_num * COS(REAL(i, num))
     pz(i) = 0.0_num
-    weight(i) = 1.0e10_num
     ex_p(i) = 1.0e6_num
     ey_p(i) = 0.0_num
     ez_p(i) = 0.0_num
@@ -191,7 +190,7 @@ PROGRAM test_gpu_2d
   pos_x_old = pos_x
   pos_y_old = pos_y
   
-  !$ACC ENTER DATA COPYIN(pos_x, pos_y, pos_x_old, pos_y_old, px, py, pz, weight, jx, jy, jz)
+  !$ACC ENTER DATA COPYIN(pos_x, pos_y, pos_x_old, pos_y_old, px, py, pz, jx, jy, jz)
   
   CALL CPU_TIME(start_time)
   DO i = 1, 100
@@ -208,7 +207,7 @@ PROGRAM test_gpu_2d
   WRITE(*,*) "  Per iteration: ", elapsed/100.0_num, " ms"
   
   !$ACC EXIT DATA COPYOUT(jx, jy, jz)
-  !$ACC EXIT DATA DELETE(pos_x, pos_y, pos_x_old, pos_y_old, px, py, pz, weight)
+  !$ACC EXIT DATA DELETE(pos_x, pos_y, pos_x_old, pos_y_old, px, py, pz)
   
   !================================================
   ! Verification
@@ -228,7 +227,7 @@ PROGRAM test_gpu_2d
   
   ! Cleanup
   DEALLOCATE(ex, ey, ez, bx, by, bz, jx, jy, jz)
-  DEALLOCATE(pos_x, pos_y, pos_x_old, pos_y_old, px, py, pz, weight)
+  DEALLOCATE(pos_x, pos_y, pos_x_old, pos_y_old, px, py, pz)
   DEALLOCATE(ex_p, ey_p, ez_p, bx_p, by_p, bz_p)
   
   CALL gpu_finalize()
