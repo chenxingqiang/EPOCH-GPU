@@ -142,10 +142,10 @@ CONTAINS
       
       IF (ipart > soa%capacity) EXIT
       
-      ! Copy position (1D: only x)
-      soa%pos_x(ipart) = current%part_pos(1)
+      ! Copy position (1D: part_pos is a scalar in 1D EPOCH)
+      soa%pos_x(ipart) = current%part_pos
       
-      ! Copy momentum (3D: px, py, pz)
+      ! Copy momentum (3 components: px, py, pz)
       soa%px(ipart) = current%part_p(1)
       soa%py(ipart) = current%part_p(2)
       soa%pz(ipart) = current%part_p(3)
@@ -195,10 +195,10 @@ CONTAINS
       
       IF (ipart > soa%count) EXIT
       
-      ! Copy position back (1D: only x)
-      current%part_pos(1) = soa%pos_x(ipart)
+      ! Copy position back (1D: part_pos is a scalar in 1D EPOCH)
+      current%part_pos = soa%pos_x(ipart)
       
-      ! Copy momentum back (3D)
+      ! Copy momentum back (3 components)
       current%part_p(1) = soa%px(ipart)
       current%part_p(2) = soa%py(ipart)
       current%part_p(3) = soa%pz(ipart)
