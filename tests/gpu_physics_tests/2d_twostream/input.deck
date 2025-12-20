@@ -5,8 +5,8 @@ begin:control
   nx = 64
   ny = 64
   
-  # Run for instability growth
-  t_end = 2.0e-12
+  # Run for instability growth (extended time)
+  t_end = 1.0e-11
   
   x_min = 0.0
   x_max = 1.0e-5
