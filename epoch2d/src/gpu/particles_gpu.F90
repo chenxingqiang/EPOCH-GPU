@@ -90,8 +90,11 @@ CONTAINS
     dto2 = dt / 2.0_num
     dtco2 = c * dto2
     
-    !$ACC PARALLEL LOOP PRESENT(pos_x, pos_y, px, py, pz) &
-    !$ACC   PRESENT(ex_p, ey_p, ez_p, bx_p, by_p, bz_p) &
+    !$ACC PARALLEL LOOP &
+    !$ACC   PRESENT(pos_x(1:n_particles), pos_y(1:n_particles)) &
+    !$ACC   PRESENT(px(1:n_particles), py(1:n_particles), pz(1:n_particles)) &
+    !$ACC   PRESENT(ex_p(1:n_particles), ey_p(1:n_particles), ez_p(1:n_particles)) &
+    !$ACC   PRESENT(bx_p(1:n_particles), by_p(1:n_particles), bz_p(1:n_particles)) &
     !$ACC   PRIVATE(part_ux, part_uy, part_uz) &
     !$ACC   PRIVATE(uxm, uym, uzm, uxp, uyp, uzp) &
     !$ACC   PRIVATE(gamma_rel, igamma, root) &
@@ -214,9 +217,11 @@ CONTAINS
     idx = 1.0_num / dx
     idy = 1.0_num / dy
     
-    !$ACC PARALLEL LOOP PRESENT(pos_x, pos_y) &
+    !$ACC PARALLEL LOOP &
+    !$ACC   PRESENT(pos_x(1:n_particles), pos_y(1:n_particles)) &
     !$ACC   PRESENT(ex, ey, ez, bx, by, bz) &
-    !$ACC   PRESENT(ex_p, ey_p, ez_p, bx_p, by_p, bz_p) &
+    !$ACC   PRESENT(ex_p(1:n_particles), ey_p(1:n_particles), ez_p(1:n_particles)) &
+    !$ACC   PRESENT(bx_p(1:n_particles), by_p(1:n_particles), bz_p(1:n_particles)) &
     !$ACC   PRIVATE(ix, iy, rx, ry, wx0, wx1, wy0, wy1, hx0, hx1, hy0, hy1)
     DO ip = 1, n_particles
       ! Cell indices (1-based)
@@ -324,7 +329,10 @@ CONTAINS
     part_mc = c * mass
     factor = weight * charge / (dx * dy)
     
-    !$ACC PARALLEL LOOP PRESENT(pos_x, pos_y, px, py, pz, jx, jy, jz) &
+    !$ACC PARALLEL LOOP &
+    !$ACC   PRESENT(pos_x(1:n_particles), pos_y(1:n_particles)) &
+    !$ACC   PRESENT(px(1:n_particles), py(1:n_particles), pz(1:n_particles)) &
+    !$ACC   PRESENT(jx, jy, jz) &
     !$ACC   PRIVATE(ix, iy, rx, ry, wx0, wx1, wy0, wy1) &
     !$ACC   PRIVATE(gamma_rel, vx, vy, vz, qw_dx, qw_dy, qw_dz)
     DO ip = 1, n_particles

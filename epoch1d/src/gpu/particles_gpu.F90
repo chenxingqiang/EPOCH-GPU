@@ -69,7 +69,10 @@ CONTAINS
     cmratio = charge * dt / (2.0_num * part_mc)
     ccmratio = c * cmratio
     
-    !$ACC PARALLEL LOOP PRESENT(pos_x, px, py, pz, ex_p, ey_p, ez_p, bx_p, by_p, bz_p) &
+    !$ACC PARALLEL LOOP &
+    !$ACC& PRESENT(pos_x(1:n_particles), px(1:n_particles), py(1:n_particles), pz(1:n_particles)) &
+    !$ACC& PRESENT(ex_p(1:n_particles), ey_p(1:n_particles), ez_p(1:n_particles)) &
+    !$ACC& PRESENT(bx_p(1:n_particles), by_p(1:n_particles), bz_p(1:n_particles)) &
     !$ACC& PRIVATE(gamma_rel, root, uxm, uym, uzm, uxp, uyp, uzp, taux, tauy, tauz, tau, part_u2, delta_x)
     DO ip = 1, n_particles
       ! Calculate gamma from momentum
@@ -149,8 +152,10 @@ CONTAINS
     
     idx = 1.0_num / dx
     
-    !$ACC PARALLEL LOOP PRESENT(pos_x, ex, ey, ez, bx, by, bz, &
-    !$ACC& ex_p, ey_p, ez_p, bx_p, by_p, bz_p) &
+    !$ACC PARALLEL LOOP &
+    !$ACC& PRESENT(pos_x(1:n_particles), ex, ey, ez, bx, by, bz) &
+    !$ACC& PRESENT(ex_p(1:n_particles), ey_p(1:n_particles), ez_p(1:n_particles)) &
+    !$ACC& PRESENT(bx_p(1:n_particles), by_p(1:n_particles), bz_p(1:n_particles)) &
     !$ACC& PRIVATE(cell_x, ix, gx0, gx1)
     DO ip = 1, n_particles
       ! Compute cell index and local coordinate
@@ -204,7 +209,9 @@ CONTAINS
     ipart_mc = 1.0_num / part_mc
     factor = 1.0_num / dx
     
-    !$ACC PARALLEL LOOP PRESENT(pos_x, px, py, pz, weight, jx, jy, jz) &
+    !$ACC PARALLEL LOOP &
+    !$ACC& PRESENT(pos_x(1:n_particles), px(1:n_particles), py(1:n_particles), pz(1:n_particles)) &
+    !$ACC& PRESENT(weight(1:n_particles), jx, jy, jz) &
     !$ACC& PRIVATE(cell_x, ix, gx0, gx1, gamma_rel, igamma, vx, vy, vz, &
     !$ACC& jx_contrib0, jx_contrib1, jy_contrib0, jy_contrib1, jz_contrib0, jz_contrib1)
     DO ip = 1, n_particles

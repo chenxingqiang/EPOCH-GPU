@@ -70,8 +70,11 @@ CONTAINS
     cmratio = charge * dt / (2.0_num * part_mc)
     ccmratio = c * cmratio
     
-    !$ACC PARALLEL LOOP PRESENT(pos_x, pos_y, pos_z, px, py, pz, &
-    !$ACC& ex_p, ey_p, ez_p, bx_p, by_p, bz_p) &
+    !$ACC PARALLEL LOOP &
+    !$ACC& PRESENT(pos_x(1:n_particles), pos_y(1:n_particles), pos_z(1:n_particles)) &
+    !$ACC& PRESENT(px(1:n_particles), py(1:n_particles), pz(1:n_particles)) &
+    !$ACC& PRESENT(ex_p(1:n_particles), ey_p(1:n_particles), ez_p(1:n_particles)) &
+    !$ACC& PRESENT(bx_p(1:n_particles), by_p(1:n_particles), bz_p(1:n_particles)) &
     !$ACC& PRIVATE(gamma_rel, root, uxm, uym, uzm, uxp, uyp, uzp, &
     !$ACC& taux, tauy, tauz, tau, part_u2, delta_x, delta_y, delta_z)
     DO ip = 1, n_particles
@@ -165,8 +168,11 @@ CONTAINS
     idy = 1.0_num / dy
     idz = 1.0_num / dz
     
-    !$ACC PARALLEL LOOP PRESENT(pos_x, pos_y, pos_z, &
-    !$ACC& ex, ey, ez, bx, by, bz, ex_p, ey_p, ez_p, bx_p, by_p, bz_p) &
+    !$ACC PARALLEL LOOP &
+    !$ACC& PRESENT(pos_x(1:n_particles), pos_y(1:n_particles), pos_z(1:n_particles)) &
+    !$ACC& PRESENT(ex, ey, ez, bx, by, bz) &
+    !$ACC& PRESENT(ex_p(1:n_particles), ey_p(1:n_particles), ez_p(1:n_particles)) &
+    !$ACC& PRESENT(bx_p(1:n_particles), by_p(1:n_particles), bz_p(1:n_particles)) &
     !$ACC& PRIVATE(cell_x, cell_y, cell_z, ix, iy, iz, &
     !$ACC& gx0, gx1, gy0, gy1, gz0, gz1, w000, w001, w010, w011, w100, w101, w110, w111)
     DO ip = 1, n_particles
@@ -272,7 +278,10 @@ CONTAINS
     ipart_mc = 1.0_num / part_mc
     factor = 1.0_num / (dx * dy * dz)
     
-    !$ACC PARALLEL LOOP PRESENT(pos_x, pos_y, pos_z, px, py, pz, weight, jx, jy, jz) &
+    !$ACC PARALLEL LOOP &
+    !$ACC& PRESENT(pos_x(1:n_particles), pos_y(1:n_particles), pos_z(1:n_particles)) &
+    !$ACC& PRESENT(px(1:n_particles), py(1:n_particles), pz(1:n_particles)) &
+    !$ACC& PRESENT(weight(1:n_particles), jx, jy, jz) &
     !$ACC& PRIVATE(cell_x, cell_y, cell_z, ix, iy, iz, gx0, gx1, gy0, gy1, gz0, gz1, &
     !$ACC& gamma_rel, igamma, vx, vy, vz, wx, wy, wz, jx_contrib, jy_contrib, jz_contrib)
     DO ip = 1, n_particles
