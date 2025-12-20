@@ -100,11 +100,10 @@ CONTAINS
     REAL(num), INTENT(INOUT) :: jx(:), jy(:), jz(:)
     
     INTEGER :: ispecies
-    INTEGER(i8) :: np, ip
+    INTEGER(i8) :: np
     REAL(num), ALLOCATABLE :: ex_p(:), ey_p(:), ez_p(:)
     REAL(num), ALLOCATABLE :: bx_p(:), by_p(:), bz_p(:)
-    REAL(num), ALLOCATABLE :: pos_x_old(:)
-    REAL(num) :: charge, mass, weight_val
+    REAL(num) :: charge, mass
     
     DO ispecies = 1, n_species
       np = species_soa(ispecies)%count
@@ -112,22 +111,12 @@ CONTAINS
       
       charge = species_list(ispecies)%charge
       mass = species_list(ispecies)%mass
-      weight_val = species_list(ispecies)%weight
       
       ! Allocate temporary arrays for interpolated fields
       ALLOCATE(ex_p(np), ey_p(np), ez_p(np))
       ALLOCATE(bx_p(np), by_p(np), bz_p(np))
-      ALLOCATE(pos_x_old(np))
       
       !$ACC ENTER DATA CREATE(ex_p, ey_p, ez_p, bx_p, by_p, bz_p)
-      !$ACC ENTER DATA CREATE(pos_x_old)
-      
-      ! Save old positions ON GPU before particle push
-      !$ACC PARALLEL LOOP PRESENT(pos_x_old, species_soa(ispecies)%pos_x)
-      DO ip = 1, np
-        pos_x_old(ip) = species_soa(ispecies)%pos_x(ip)
-      END DO
-      !$ACC END PARALLEL LOOP
       
       ! Interpolate fields to particle positions (1D: linear interpolation)
       CALL interpolate_fields_to_particles_gpu(np, &
@@ -135,7 +124,7 @@ CONTAINS
                                                ex, ey, ez, bx, by, bz, &
                                                ex_p, ey_p, ez_p, &
                                                bx_p, by_p, bz_p, &
-                                               x_min, dx, nx, ng)
+                                               nx, ng, x_min, dx)
       
       ! Push particles using Boris algorithm
       CALL push_particles_gpu(np, &
@@ -146,25 +135,22 @@ CONTAINS
                               ex_p, ey_p, ez_p, bx_p, by_p, bz_p, &
                               charge, mass, dt)
       
-      ! Deposit current (using old and new positions)
+      ! Deposit current (1D velocity-based method)
       CALL deposit_current_gpu(np, &
                                species_soa(ispecies)%pos_x, &
-                               pos_x_old, &
                                species_soa(ispecies)%px, &
                                species_soa(ispecies)%py, &
                                species_soa(ispecies)%pz, &
-                               weight_val, charge, mass, &
+                               species_soa(ispecies)%weight, &
                                jx, jy, jz, &
-                               x_min, dx, dt, nx, ng)
+                               nx, ng, x_min, dx, mass)
       
       ! Clean up temporary arrays on GPU
       !$ACC EXIT DATA DELETE(ex_p, ey_p, ez_p, bx_p, by_p, bz_p)
-      !$ACC EXIT DATA DELETE(pos_x_old)
       
       ! Deallocate CPU arrays
       DEALLOCATE(ex_p, ey_p, ez_p)
       DEALLOCATE(bx_p, by_p, bz_p)
-      DEALLOCATE(pos_x_old)
     END DO
 #else
     TYPE(*), INTENT(INOUT) :: species_soa(:)
