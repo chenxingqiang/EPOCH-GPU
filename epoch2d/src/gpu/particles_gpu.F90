@@ -406,30 +406,53 @@ CONTAINS
       dwx = wx_new - wx_old
       dwy = wy_new - wy_old
       
-      ! Compute gamma for velocity calculation
+      ! Compute gamma for velocity calculation (for Jz)
       gamma_rel = SQRT((px(ip)*ipart_mc)**2 + (py(ip)*ipart_mc)**2 + &
                        (pz(ip)*ipart_mc)**2 + 1.0_num)
       igamma = 1.0_num / gamma_rel
-      
-      ! DEBUG: Simple velocity-based deposition directly using ix_new, iy_new
       vz = pz(ip) * ipart_mc * igamma * c
-      qw_idxy = charge * weight(ip) * idx * idy
       
-      ! Clamp indices to valid range
-      ix = MAX(1, MIN(ix_new, nx))
-      iy = MAX(1, MIN(iy_new, ny))
+      ! Esirkepov current factors (like 1D)
+      qw_idt = charge * weight(ip) * idt  ! For Jx, Jy (charge conservation)
+      qw_idxy = charge * weight(ip) * idx * idy  ! For Jz (velocity-based)
       
-      ! Simple NGP (Nearest Grid Point) deposition for debugging
-      jx_accum = qw_idxy * px(ip) * ipart_mc * igamma * c
-      jy_accum = qw_idxy * py(ip) * ipart_mc * igamma * c
-      jz_contrib = qw_idxy * vz
+      ! Esirkepov Jx deposition (cumulative in x)
+      DO iy = -1, 2
+        IF (iy_base + iy < 1 - ng .OR. iy_base + iy > ny + ng) CYCLE
+        jx_accum = 0.0_num
+        DO ix = -1, 2
+          IF (ix_base + ix < 1 - ng .OR. ix_base + ix > nx + ng) CYCLE
+          ! Jx from charge displacement in x direction
+          jx_accum = jx_accum - qw_idt * dwx(ix) * (wy_old(iy) + 0.5_num * dwy(iy))
+          !$ACC ATOMIC UPDATE
+          jx(ix_base + ix, iy_base + iy) = jx(ix_base + ix, iy_base + iy) + jx_accum
+        END DO
+      END DO
       
-      !$ACC ATOMIC UPDATE
-      jx(ix, iy) = jx(ix, iy) + jx_accum
-      !$ACC ATOMIC UPDATE
-      jy(ix, iy) = jy(ix, iy) + jy_accum
-      !$ACC ATOMIC UPDATE
-      jz(ix, iy) = jz(ix, iy) + jz_contrib
+      ! Esirkepov Jy deposition (cumulative in y)
+      DO ix = -1, 2
+        IF (ix_base + ix < 1 - ng .OR. ix_base + ix > nx + ng) CYCLE
+        jy_accum = 0.0_num
+        DO iy = -1, 2
+          IF (iy_base + iy < 1 - ng .OR. iy_base + iy > ny + ng) CYCLE
+          ! Jy from charge displacement in y direction
+          jy_accum = jy_accum - qw_idt * dwy(iy) * (wx_old(ix) + 0.5_num * dwx(ix))
+          !$ACC ATOMIC UPDATE
+          jy(ix_base + ix, iy_base + iy) = jy(ix_base + ix, iy_base + iy) + jy_accum
+        END DO
+      END DO
+      
+      ! Jz from velocity with averaged shape (not charge-conserving but correct for out-of-plane)
+      DO iy = -1, 2
+        IF (iy_base + iy < 1 - ng .OR. iy_base + iy > ny + ng) CYCLE
+        DO ix = -1, 2
+          IF (ix_base + ix < 1 - ng .OR. ix_base + ix > nx + ng) CYCLE
+          jz_contrib = qw_idxy * vz * (wx_old(ix) + 0.5_num * dwx(ix)) * &
+                                      (wy_old(iy) + 0.5_num * dwy(iy))
+          !$ACC ATOMIC UPDATE
+          jz(ix_base + ix, iy_base + iy) = jz(ix_base + ix, iy_base + iy) + jz_contrib
+        END DO
+      END DO
     END DO
     !$ACC END PARALLEL LOOP
     
