@@ -282,7 +282,7 @@ CONTAINS
     REAL(num) :: wx_old(-1:2), wy_old(-1:2), wz_old(-1:2)
     REAL(num) :: wx_new(-1:2), wy_new(-1:2), wz_new(-1:2)
     REAL(num) :: dwx(-1:2), dwy(-1:2), dwz(-1:2)
-    REAL(num) :: qw_idt, jx_accum, jy_accum, jz_accum
+    REAL(num) :: jx_accum, jy_accum, jz_accum
     
     idx = 1.0_num / dx
     idy = 1.0_num / dy
@@ -299,7 +299,7 @@ CONTAINS
     !$ACC& PRIVATE(ix_base, iy_base, iz_base, dcellx, dcelly, dcellz) &
     !$ACC& PRIVATE(frac_x_old, frac_y_old, frac_z_old, frac_x_new, frac_y_new, frac_z_new) &
     !$ACC& PRIVATE(wx_old, wy_old, wz_old, wx_new, wy_new, wz_new, dwx, dwy, dwz) &
-    !$ACC& PRIVATE(qw_idt, jx_accum, jy_accum, jz_accum)
+    !$ACC& PRIVATE(jx_accum, jy_accum, jz_accum)
     DO ip = 1, n_particles
       ! Cell coordinates at old and new positions
       cell_x_old = (pos_x_old(ip) - x_min) * idx
@@ -370,8 +370,10 @@ CONTAINS
       dwy = wy_new - wy_old
       dwz = wz_new - wz_old
       
-      ! Current factor
-      qw_idt = charge * weight(ip) * idt
+      ! Current factors for 3D Esirkepov (with cell area normalization)
+      ! Jx: q*w / (dt*dy*dz) * dwx * Sy * Sz
+      ! Jy: q*w / (dt*dx*dz) * dwy * Sx * Sz
+      ! Jz: q*w / (dt*dx*dy) * dwz * Sx * Sy
       
       ! Esirkepov Jx deposition
       DO iz = -1, 2
@@ -381,7 +383,7 @@ CONTAINS
           jx_accum = 0.0_num
           DO ix = -1, 2
             IF (ix_base + ix < 1 - ng .OR. ix_base + ix > nx + ng) CYCLE
-            jx_accum = jx_accum - qw_idt * dwx(ix) * &
+            jx_accum = jx_accum - charge * weight(ip) * idt * idy * idz * dwx(ix) * &
                        (wy_old(iy) + 0.5_num * dwy(iy)) * &
                        (wz_old(iz) + 0.5_num * dwz(iz))
             !$ACC ATOMIC UPDATE
@@ -399,7 +401,7 @@ CONTAINS
           jy_accum = 0.0_num
           DO iy = -1, 2
             IF (iy_base + iy < 1 - ng .OR. iy_base + iy > ny + ng) CYCLE
-            jy_accum = jy_accum - qw_idt * dwy(iy) * &
+            jy_accum = jy_accum - charge * weight(ip) * idt * idx * idz * dwy(iy) * &
                        (wx_old(ix) + 0.5_num * dwx(ix)) * &
                        (wz_old(iz) + 0.5_num * dwz(iz))
             !$ACC ATOMIC UPDATE
@@ -417,7 +419,7 @@ CONTAINS
           jz_accum = 0.0_num
           DO iz = -1, 2
             IF (iz_base + iz < 1 - ng .OR. iz_base + iz > nz + ng) CYCLE
-            jz_accum = jz_accum - qw_idt * dwz(iz) * &
+            jz_accum = jz_accum - charge * weight(ip) * idt * idx * idy * dwz(iz) * &
                        (wx_old(ix) + 0.5_num * dwx(ix)) * &
                        (wy_old(iy) + 0.5_num * dwy(iy))
             !$ACC ATOMIC UPDATE

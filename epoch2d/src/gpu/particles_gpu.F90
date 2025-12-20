@@ -412,9 +412,11 @@ CONTAINS
       igamma = 1.0_num / gamma_rel
       vz = pz(ip) * ipart_mc * igamma * c
       
-      ! Current factors
-      qw_idt = charge * weight(ip) * idt
-      qw_idxy = charge * weight(ip) * idx * idy
+      ! Current factors for 2D Esirkepov
+      ! Jx: charge conservation requires q*w / (dt*dy) * dwx * Sy
+      ! Jy: charge conservation requires q*w / (dt*dx) * dwy * Sx
+      qw_idt = charge * weight(ip) * idt * idy  ! For Jx: divide by dy (cell width in y)
+      qw_idxy = charge * weight(ip) * idt * idx  ! For Jy: divide by dx (cell width in x)
       
       ! Esirkepov Jx deposition (cumulative in x)
       DO iy = -1, 2
@@ -434,7 +436,7 @@ CONTAINS
         jy_accum = 0.0_num
         DO iy = -1, 2
           IF (iy_base + iy < 1 - ng .OR. iy_base + iy > ny + ng) CYCLE
-          jy_accum = jy_accum - qw_idt * dwy(iy) * (wx_old(ix) + 0.5_num * dwx(ix))
+          jy_accum = jy_accum - qw_idxy * dwy(iy) * (wx_old(ix) + 0.5_num * dwx(ix))
           !$ACC ATOMIC UPDATE
           jy(ix_base + ix, iy_base + iy) = jy(ix_base + ix, iy_base + iy) + jy_accum
         END DO
