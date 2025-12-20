@@ -228,7 +228,9 @@ CONTAINS
     ipart_mc = 1.0_num / part_mc
     
     !$ACC PARALLEL LOOP &
-    !$ACC& PRESENT(pos_x_old, pos_x_new, px, py, pz, weight, jx, jy, jz) &
+    !$ACC& PRESENT(pos_x_old(1:n_particles), pos_x_new(1:n_particles)) &
+    !$ACC& PRESENT(px(1:n_particles), py(1:n_particles), pz(1:n_particles)) &
+    !$ACC& PRESENT(weight(1:n_particles), jx, jy, jz) &
     !$ACC& PRIVATE(cell_x_old, cell_x_new, ix_old, ix_new, frac_old, frac_new) &
     !$ACC& PRIVATE(dcell, ix_base, wold, wnew, dw) &
     !$ACC& PRIVATE(gamma_rel, igamma, vy, vz, qw_idt, qw_idx) &
