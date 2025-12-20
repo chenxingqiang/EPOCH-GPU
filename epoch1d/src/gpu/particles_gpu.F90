@@ -217,7 +217,7 @@ CONTAINS
     REAL(num) :: frac_old, frac_new
     REAL(num) :: gamma_rel, igamma, part_mc, ipart_mc
     REAL(num) :: vy, vz
-    REAL(num) :: wold(-1:1), wnew(-1:1), dw(-1:1)
+    REAL(num) :: wold(-1:2), wnew(-1:2), dw(-1:2)
     REAL(num) :: jx_accum, jy_contrib, jz_contrib
     REAL(num) :: qw_idt, qw_idx
     INTEGER :: dcell
@@ -259,7 +259,7 @@ CONTAINS
       
       ! First-order (linear) shape functions at old position
       ! W(-1)=0, W(0)=1-frac, W(1)=frac for cell-centered
-      wold(-1) = 0.0_num
+      wold = 0.0_num
       wold(0) = 1.0_num - frac_old
       wold(1) = frac_old
       
@@ -275,9 +275,7 @@ CONTAINS
       END IF
       
       ! Shape function difference
-      dw(-1) = wnew(-1) - wold(-1)
-      dw(0) = wnew(0) - wold(0)
-      dw(1) = wnew(1) - wold(1)
+      dw = wnew - wold
       
       ! Compute transverse velocity for Jy, Jz
       gamma_rel = SQRT((px(ip)*ipart_mc)**2 + (py(ip)*ipart_mc)**2 + &
@@ -293,7 +291,7 @@ CONTAINS
       ! Esirkepov Jx deposition: cumulative sum of -dw
       ! This ensures exact charge conservation
       jx_accum = 0.0_num
-      DO ix = -1, 1
+      DO ix = -1, 2
         ! Check bounds
         IF (ix_base + ix >= 1 - ng .AND. ix_base + ix <= nx + ng) THEN
           ! Jx from charge displacement

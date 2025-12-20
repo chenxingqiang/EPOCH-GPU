@@ -279,9 +279,9 @@ CONTAINS
     REAL(num) :: cell_x_new, cell_y_new, cell_z_new
     REAL(num) :: frac_x_old, frac_y_old, frac_z_old
     REAL(num) :: frac_x_new, frac_y_new, frac_z_new
-    REAL(num) :: wx_old(-1:1), wy_old(-1:1), wz_old(-1:1)
-    REAL(num) :: wx_new(-1:1), wy_new(-1:1), wz_new(-1:1)
-    REAL(num) :: dwx(-1:1), dwy(-1:1), dwz(-1:1)
+    REAL(num) :: wx_old(-1:2), wy_old(-1:2), wz_old(-1:2)
+    REAL(num) :: wx_new(-1:2), wy_new(-1:2), wz_new(-1:2)
+    REAL(num) :: dwx(-1:2), dwy(-1:2), dwz(-1:2)
     REAL(num) :: qw_idt, jx_accum, jy_accum, jz_accum
     
     idx = 1.0_num / dx
@@ -336,9 +336,10 @@ CONTAINS
       iz_base = MAX(1, MIN(iz_old, nz-1))
       
       ! First-order shape functions at old position
-      wx_old(-1) = 0.0_num; wx_old(0) = 1.0_num - frac_x_old; wx_old(1) = frac_x_old
-      wy_old(-1) = 0.0_num; wy_old(0) = 1.0_num - frac_y_old; wy_old(1) = frac_y_old
-      wz_old(-1) = 0.0_num; wz_old(0) = 1.0_num - frac_z_old; wz_old(1) = frac_z_old
+      wx_old = 0.0_num; wy_old = 0.0_num; wz_old = 0.0_num
+      wx_old(0) = 1.0_num - frac_x_old; wx_old(1) = frac_x_old
+      wy_old(0) = 1.0_num - frac_y_old; wy_old(1) = frac_y_old
+      wz_old(0) = 1.0_num - frac_z_old; wz_old(1) = frac_z_old
       
       ! Shape functions at new position (shifted by dcell)
       wx_new = 0.0_num; wy_new = 0.0_num; wz_new = 0.0_num
@@ -365,26 +366,20 @@ CONTAINS
       END IF
       
       ! Shape function differences
-      dwx(-1) = wx_new(-1) - wx_old(-1)
-      dwx(0) = wx_new(0) - wx_old(0)
-      dwx(1) = wx_new(1) - wx_old(1)
-      dwy(-1) = wy_new(-1) - wy_old(-1)
-      dwy(0) = wy_new(0) - wy_old(0)
-      dwy(1) = wy_new(1) - wy_old(1)
-      dwz(-1) = wz_new(-1) - wz_old(-1)
-      dwz(0) = wz_new(0) - wz_old(0)
-      dwz(1) = wz_new(1) - wz_old(1)
+      dwx = wx_new - wx_old
+      dwy = wy_new - wy_old
+      dwz = wz_new - wz_old
       
       ! Current factor
       qw_idt = charge * weight(ip) * idt
       
       ! Esirkepov Jx deposition
-      DO iz = -1, 1
+      DO iz = -1, 2
         IF (iz_base + iz < 1 - ng .OR. iz_base + iz > nz + ng) CYCLE
-        DO iy = -1, 1
+        DO iy = -1, 2
           IF (iy_base + iy < 1 - ng .OR. iy_base + iy > ny + ng) CYCLE
           jx_accum = 0.0_num
-          DO ix = -1, 1
+          DO ix = -1, 2
             IF (ix_base + ix < 1 - ng .OR. ix_base + ix > nx + ng) CYCLE
             jx_accum = jx_accum - qw_idt * dwx(ix) * &
                        (wy_old(iy) + 0.5_num * dwy(iy)) * &
@@ -397,12 +392,12 @@ CONTAINS
       END DO
       
       ! Esirkepov Jy deposition
-      DO iz = -1, 1
+      DO iz = -1, 2
         IF (iz_base + iz < 1 - ng .OR. iz_base + iz > nz + ng) CYCLE
-        DO ix = -1, 1
+        DO ix = -1, 2
           IF (ix_base + ix < 1 - ng .OR. ix_base + ix > nx + ng) CYCLE
           jy_accum = 0.0_num
-          DO iy = -1, 1
+          DO iy = -1, 2
             IF (iy_base + iy < 1 - ng .OR. iy_base + iy > ny + ng) CYCLE
             jy_accum = jy_accum - qw_idt * dwy(iy) * &
                        (wx_old(ix) + 0.5_num * dwx(ix)) * &
@@ -415,12 +410,12 @@ CONTAINS
       END DO
       
       ! Esirkepov Jz deposition
-      DO iy = -1, 1
+      DO iy = -1, 2
         IF (iy_base + iy < 1 - ng .OR. iy_base + iy > ny + ng) CYCLE
-        DO ix = -1, 1
+        DO ix = -1, 2
           IF (ix_base + ix < 1 - ng .OR. ix_base + ix > nx + ng) CYCLE
           jz_accum = 0.0_num
-          DO iz = -1, 1
+          DO iz = -1, 2
             IF (iz_base + iz < 1 - ng .OR. iz_base + iz > nz + ng) CYCLE
             jz_accum = jz_accum - qw_idt * dwz(iz) * &
                        (wx_old(ix) + 0.5_num * dwx(ix)) * &

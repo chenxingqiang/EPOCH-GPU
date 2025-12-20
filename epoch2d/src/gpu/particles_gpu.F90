@@ -328,8 +328,8 @@ CONTAINS
     REAL(num) :: frac_x_old, frac_y_old, frac_x_new, frac_y_new
     REAL(num) :: part_mc, ipart_mc, gamma_rel, igamma, vz
     REAL(num) :: qw_idt, qw_idxy
-    REAL(num) :: wx_old(-1:1), wy_old(-1:1), wx_new(-1:1), wy_new(-1:1)
-    REAL(num) :: dwx(-1:1), dwy(-1:1)
+    REAL(num) :: wx_old(-1:2), wy_old(-1:2), wx_new(-1:2), wy_new(-1:2)
+    REAL(num) :: dwx(-1:2), dwy(-1:2)
     REAL(num) :: jx_accum, jy_accum, jz_contrib
     
     idx = 1.0_num / dx
@@ -377,10 +377,10 @@ CONTAINS
       iy_base = MAX(1, MIN(iy_old, ny-1))
       
       ! First-order shape functions at old position
-      wx_old(-1) = 0.0_num
+      wx_old = 0.0_num
+      wy_old = 0.0_num
       wx_old(0) = 1.0_num - frac_x_old
       wx_old(1) = frac_x_old
-      wy_old(-1) = 0.0_num
       wy_old(0) = 1.0_num - frac_y_old
       wy_old(1) = frac_y_old
       
@@ -403,12 +403,8 @@ CONTAINS
       END IF
       
       ! Shape function differences
-      dwx(-1) = wx_new(-1) - wx_old(-1)
-      dwx(0) = wx_new(0) - wx_old(0)
-      dwx(1) = wx_new(1) - wx_old(1)
-      dwy(-1) = wy_new(-1) - wy_old(-1)
-      dwy(0) = wy_new(0) - wy_old(0)
-      dwy(1) = wy_new(1) - wy_old(1)
+      dwx = wx_new - wx_old
+      dwy = wy_new - wy_old
       
       ! Compute transverse velocity for Jz
       gamma_rel = SQRT((px(ip)*ipart_mc)**2 + (py(ip)*ipart_mc)**2 + &
@@ -421,10 +417,10 @@ CONTAINS
       qw_idxy = charge * weight(ip) * idx * idy
       
       ! Esirkepov Jx deposition (cumulative in x)
-      DO iy = -1, 1
+      DO iy = -1, 2
         IF (iy_base + iy < 1 - ng .OR. iy_base + iy > ny + ng) CYCLE
         jx_accum = 0.0_num
-        DO ix = -1, 1
+        DO ix = -1, 2
           IF (ix_base + ix < 1 - ng .OR. ix_base + ix > nx + ng) CYCLE
           jx_accum = jx_accum - qw_idt * dwx(ix) * (wy_old(iy) + 0.5_num * dwy(iy))
           !$ACC ATOMIC UPDATE
@@ -433,10 +429,10 @@ CONTAINS
       END DO
       
       ! Esirkepov Jy deposition (cumulative in y)
-      DO ix = -1, 1
+      DO ix = -1, 2
         IF (ix_base + ix < 1 - ng .OR. ix_base + ix > nx + ng) CYCLE
         jy_accum = 0.0_num
-        DO iy = -1, 1
+        DO iy = -1, 2
           IF (iy_base + iy < 1 - ng .OR. iy_base + iy > ny + ng) CYCLE
           jy_accum = jy_accum - qw_idt * dwy(iy) * (wx_old(ix) + 0.5_num * dwx(ix))
           !$ACC ATOMIC UPDATE
@@ -445,9 +441,9 @@ CONTAINS
       END DO
       
       ! Jz from velocity with averaged shape
-      DO iy = -1, 1
+      DO iy = -1, 2
         IF (iy_base + iy < 1 - ng .OR. iy_base + iy > ny + ng) CYCLE
-        DO ix = -1, 1
+        DO ix = -1, 2
           IF (ix_base + ix < 1 - ng .OR. ix_base + ix > nx + ng) CYCLE
           jz_contrib = qw_idxy * vz * (wx_old(ix) + 0.5_num * dwx(ix)) * &
                                       (wy_old(iy) + 0.5_num * dwy(iy))
