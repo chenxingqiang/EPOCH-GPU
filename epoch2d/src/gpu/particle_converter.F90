@@ -244,10 +244,17 @@ CONTAINS
     ! Copy to GPU device memory
     !$ACC ENTER DATA COPYIN(soa%pos_x(1:soa%count))
     !$ACC ENTER DATA COPYIN(soa%pos_y(1:soa%count))
+    !$ACC ENTER DATA COPYIN(soa%pos_x_old(1:soa%count))
+    !$ACC ENTER DATA COPYIN(soa%pos_y_old(1:soa%count))
     !$ACC ENTER DATA COPYIN(soa%px(1:soa%count))
     !$ACC ENTER DATA COPYIN(soa%py(1:soa%count))
     !$ACC ENTER DATA COPYIN(soa%pz(1:soa%count))
     !$ACC ENTER DATA COPYIN(soa%weight(1:soa%count))
+    
+    ! Initialize old positions to current positions
+    soa%pos_x_old(1:soa%count) = soa%pos_x(1:soa%count)
+    soa%pos_y_old(1:soa%count) = soa%pos_y(1:soa%count)
+    !$ACC UPDATE DEVICE(soa%pos_x_old(1:soa%count), soa%pos_y_old(1:soa%count))
 #endif
     
   END SUBROUTINE sync_species_to_gpu
@@ -278,6 +285,7 @@ CONTAINS
     
     ! Free GPU memory (must match the slices used in ENTER DATA)
     !$ACC EXIT DATA DELETE(soa%pos_x(1:soa%count), soa%pos_y(1:soa%count))
+    !$ACC EXIT DATA DELETE(soa%pos_x_old(1:soa%count), soa%pos_y_old(1:soa%count))
     !$ACC EXIT DATA DELETE(soa%px(1:soa%count), soa%py(1:soa%count), soa%pz(1:soa%count))
     !$ACC EXIT DATA DELETE(soa%weight(1:soa%count))
 #endif

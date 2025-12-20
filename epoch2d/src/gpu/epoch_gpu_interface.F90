@@ -308,7 +308,6 @@ CONTAINS
     INTEGER(i8) :: np, ip
     REAL(num), ALLOCATABLE :: ex_p(:), ey_p(:), ez_p(:)
     REAL(num), ALLOCATABLE :: bx_p(:), by_p(:), bz_p(:)
-    REAL(num), ALLOCATABLE :: pos_x_old(:), pos_y_old(:)  ! For Esirkepov method
     REAL(num) :: charge, mass
     
     ! Transfer field and current arrays to GPU
@@ -326,17 +325,20 @@ CONTAINS
       ! Allocate temporary arrays
       ALLOCATE(ex_p(np), ey_p(np), ez_p(np))
       ALLOCATE(bx_p(np), by_p(np), bz_p(np))
-      ALLOCATE(pos_x_old(np), pos_y_old(np))
       
-      ! Save old positions: GPU -> CPU -> pos_old -> GPU
-      !$ACC UPDATE HOST(species_soa(ispecies)%pos_x(1:np))
-      !$ACC UPDATE HOST(species_soa(ispecies)%pos_y(1:np))
-      pos_x_old(1:np) = species_soa(ispecies)%pos_x(1:np)
-      pos_y_old(1:np) = species_soa(ispecies)%pos_y(1:np)
-      
-      ! Transfer to GPU
-      !$ACC ENTER DATA COPYIN(pos_x_old(1:np), pos_y_old(1:np))
       !$ACC ENTER DATA CREATE(ex_p, ey_p, ez_p, bx_p, by_p, bz_p)
+      
+      ! Save old positions in SoA structure (already on GPU)
+      ! pos_x_old = pos_x before push
+      !$ACC PARALLEL LOOP PRESENT(species_soa(ispecies)%pos_x(1:np)) &
+      !$ACC& PRESENT(species_soa(ispecies)%pos_y(1:np)) &
+      !$ACC& PRESENT(species_soa(ispecies)%pos_x_old(1:np)) &
+      !$ACC& PRESENT(species_soa(ispecies)%pos_y_old(1:np))
+      DO ip = 1, np
+        species_soa(ispecies)%pos_x_old(ip) = species_soa(ispecies)%pos_x(ip)
+        species_soa(ispecies)%pos_y_old(ip) = species_soa(ispecies)%pos_y(ip)
+      END DO
+      !$ACC END PARALLEL LOOP
       
       ! Interpolate fields to particle positions
       CALL interpolate_fields_to_particles_gpu(np, &
@@ -358,8 +360,10 @@ CONTAINS
                               charge, mass, dt)
       
       ! Deposit current using Esirkepov charge-conserving method
+      ! Uses pos_x_old, pos_y_old stored in SoA
       CALL deposit_current_gpu(np, &
-                               pos_x_old, pos_y_old, &
+                               species_soa(ispecies)%pos_x_old, &
+                               species_soa(ispecies)%pos_y_old, &
                                species_soa(ispecies)%pos_x, &
                                species_soa(ispecies)%pos_y, &
                                species_soa(ispecies)%px, &
@@ -372,12 +376,10 @@ CONTAINS
       
       ! Clean up temporary arrays on GPU
       !$ACC EXIT DATA DELETE(ex_p, ey_p, ez_p, bx_p, by_p, bz_p)
-      !$ACC EXIT DATA DELETE(pos_x_old, pos_y_old)
       
       ! Deallocate CPU arrays
       DEALLOCATE(ex_p, ey_p, ez_p)
       DEALLOCATE(bx_p, by_p, bz_p)
-      DEALLOCATE(pos_x_old, pos_y_old)
     END DO
     
     ! Sync current back to CPU for field update

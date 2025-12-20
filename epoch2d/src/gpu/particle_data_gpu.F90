@@ -67,6 +67,12 @@ MODULE particle_data_gpu
     REAL(num), ALLOCATABLE :: pos_y(:)
     
     !-----------------------------------------------------------------------
+    ! Old position arrays (for Esirkepov charge-conserving current deposition)
+    !-----------------------------------------------------------------------
+    REAL(num), ALLOCATABLE :: pos_x_old(:)
+    REAL(num), ALLOCATABLE :: pos_y_old(:)
+    
+    !-----------------------------------------------------------------------
     ! Momentum arrays (3D: px, py, pz)
     !-----------------------------------------------------------------------
     REAL(num), ALLOCATABLE :: px(:)
@@ -170,6 +176,8 @@ CONTAINS
     ! Allocate main arrays (used for both CPU and GPU via OpenACC)
     ALLOCATE(soa%pos_x(cap), STAT=ierr)
     ALLOCATE(soa%pos_y(cap), STAT=ierr)
+    ALLOCATE(soa%pos_x_old(cap), STAT=ierr)
+    ALLOCATE(soa%pos_y_old(cap), STAT=ierr)
     ALLOCATE(soa%px(cap), STAT=ierr)
     ALLOCATE(soa%py(cap), STAT=ierr)
     ALLOCATE(soa%pz(cap), STAT=ierr)
@@ -179,6 +187,8 @@ CONTAINS
     
     soa%pos_x = 0.0_num
     soa%pos_y = 0.0_num
+    soa%pos_x_old = 0.0_num
+    soa%pos_y_old = 0.0_num
     soa%px = 0.0_num
     soa%py = 0.0_num
     soa%pz = 0.0_num
@@ -214,6 +224,8 @@ CONTAINS
     ! Deallocate device/main arrays
     IF (ALLOCATED(soa%pos_x)) DEALLOCATE(soa%pos_x, STAT=ierr)
     IF (ALLOCATED(soa%pos_y)) DEALLOCATE(soa%pos_y, STAT=ierr)
+    IF (ALLOCATED(soa%pos_x_old)) DEALLOCATE(soa%pos_x_old, STAT=ierr)
+    IF (ALLOCATED(soa%pos_y_old)) DEALLOCATE(soa%pos_y_old, STAT=ierr)
     IF (ALLOCATED(soa%px)) DEALLOCATE(soa%px, STAT=ierr)
     IF (ALLOCATED(soa%py)) DEALLOCATE(soa%py, STAT=ierr)
     IF (ALLOCATED(soa%pz)) DEALLOCATE(soa%pz, STAT=ierr)
