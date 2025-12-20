@@ -65,6 +65,8 @@ begin:output
   grid = always
   ex = always
   ey = always
+  jx = always
+  jy = always
   
   number_density = always + species
   
