@@ -6,7 +6,7 @@
 !> Structure of Arrays (SoA) format.
 !>
 !> @author EPOCH-GPU Development Team
-!> @date December 2024
+!> @date December 2025
 
 MODULE particle_converter
   !> @brief Particle data structure converter between CPU (AoS) and GPU (SoA)

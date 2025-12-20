@@ -1,4 +1,4 @@
-! Copyright (C) 2024 EPOCH-GPU Development Team
+! Copyright (C) 2025 EPOCH-GPU Development Team
 !
 ! @file particle_data_gpu.F90
 ! @brief GPU-optimized particle data structures for EPOCH1D

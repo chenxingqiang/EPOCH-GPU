@@ -1,4 +1,4 @@
-! Copyright (C) 2024 EPOCH-GPU Development Team
+! Copyright (C) 2025 EPOCH-GPU Development Team
 !
 ! Multi-GPU test program for EPOCH-GPU
 ! Tests GPU-aware MPI communication and main loop integration

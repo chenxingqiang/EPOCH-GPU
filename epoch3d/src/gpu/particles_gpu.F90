@@ -1,4 +1,4 @@
-! Copyright (C) 2024 EPOCH-GPU Development Team
+! Copyright (C) 2025 EPOCH-GPU Development Team
 !
 ! @file particles_gpu.F90
 ! @brief GPU-accelerated particle pusher for EPOCH3D

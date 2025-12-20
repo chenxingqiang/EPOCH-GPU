@@ -3,7 +3,7 @@ title: Performance Tuning
 linktitle: Performance
 toc: true
 type: docs
-date: "2024-12-19T00:00:00Z"
+date: "2025-12-19T00:00:00Z"
 draft: false
 menu:
   gpu:
@@ -13,7 +13,7 @@ menu:
 
 ## Benchmark Results (Tesla V100-PCIE-32GB)
 
-> **Verified**: December 2024 | CUDA 12.2 | nvfortran 24.11
+> **Verified**: December 2025 | CUDA 12.2 | nvfortran 24.11
 
 ### 1D Performance
 

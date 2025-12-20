@@ -3,11 +3,11 @@
 ================================================================================
 
 EPOCH-GPU: GPU-Accelerated EPOCH
-Copyright (C) 2024 Xingqiang Chen <joy6677@outlook.com>
+Copyright (C) 2025 Xingqiang Chen <joy6677@outlook.com>
 
 This project is a derivative work based on:
   EPOCH (Extendable PIC Open Collaboration)
-  Copyright (C) 2010-2024 University of Warwick
+  Copyright (C) 2010-2025 University of Warwick
   Original Repository: https://github.com/Warwick-Plasma/epoch
 
 EPOCH-GPU extends the original EPOCH code with NVIDIA GPU acceleration support

@@ -1,4 +1,4 @@
-! Copyright (C) 2024 EPOCH-GPU Development Team
+! Copyright (C) 2025 EPOCH-GPU Development Team
 !
 ! @file fields_gpu.F90
 ! @brief GPU-accelerated electromagnetic field solver for EPOCH1D

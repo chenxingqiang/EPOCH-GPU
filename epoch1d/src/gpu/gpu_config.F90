@@ -1,4 +1,4 @@
-! Copyright (C) 2024 EPOCH-GPU Development Team
+! Copyright (C) 2025 EPOCH-GPU Development Team
 !
 ! This program is free software: you can redistribute it and/or modify
 ! it under the terms of the GNU General Public License as published by
@@ -36,6 +36,8 @@ MODULE gpu_config
   PUBLIC :: gpu_get_memory_info, gpu_print_device_info
   PUBLIC :: gpu_enabled, gpu_device_id
   PUBLIC :: BLOCK_SIZE_X, BLOCK_SIZE_Y, BLOCK_SIZE_PARTICLE
+  ! Wrapper functions for epoch1d integration
+  PUBLIC :: gpu_init_all, gpu_finalize_all, gpu_check_available
   
   !---------------------------------------------------------------------------
   ! GPU configuration parameters
@@ -289,6 +291,39 @@ CONTAINS
     WRITE(*,*)
     
   END SUBROUTINE gpu_print_device_info
+
+
+  !---------------------------------------------------------------------------
+  !> @brief Initialize all GPU resources (wrapper for epoch1d integration)
+  !---------------------------------------------------------------------------
+  SUBROUTINE gpu_init_all()
+    INTEGER :: ierr
+    
+    ierr = gpu_init(0)
+    
+  END SUBROUTINE gpu_init_all
+  
+  
+  !---------------------------------------------------------------------------
+  !> @brief Finalize all GPU resources (wrapper for epoch1d integration)
+  !---------------------------------------------------------------------------
+  SUBROUTINE gpu_finalize_all()
+    
+    CALL gpu_finalize()
+    
+  END SUBROUTINE gpu_finalize_all
+  
+  
+  !---------------------------------------------------------------------------
+  !> @brief Check if GPU is available and enabled
+  !> @return .TRUE. if GPU is available and enabled
+  !---------------------------------------------------------------------------
+  FUNCTION gpu_check_available() RESULT(available)
+    LOGICAL :: available
+    
+    available = gpu_enabled .AND. (gpu_device_count > 0)
+    
+  END FUNCTION gpu_check_available
 
 END MODULE gpu_config
 

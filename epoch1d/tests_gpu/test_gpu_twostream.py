@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (C) 2024 EPOCH-GPU Development Team
+# Copyright (C) 2025 EPOCH-GPU Development Team
 #
 # GPU Two-Stream Instability Test for EPOCH1D
 # Based on original test_twostream.py

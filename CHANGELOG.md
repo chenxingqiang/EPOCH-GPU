@@ -1,9 +1,9 @@
-## v5.0.0 - EPOCH-GPU Release (2024-12-20)
+## v5.0.0 - EPOCH-GPU Release (2025-12-20)
 
 This major release introduces GPU acceleration support for EPOCH, enabling 
 significant performance improvements on NVIDIA GPUs.
 
-> **Verified**: All tests passed on Tesla V100-PCIE-32GB (December 2024)
+> **Verified**: All tests passed on Tesla V100-PCIE-32GB (December 2025)
 
 ### New Features
 

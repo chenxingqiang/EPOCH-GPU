@@ -76,7 +76,7 @@ make -f Makefile.gpu GPU_CC=cc90  # H100
 
 ### Performance Benchmarks (Tesla V100-PCIE-32GB)
 
-> **Verified**: December 2024 on Tesla V100-PCIE-32GB, CUDA 12.2, nvfortran 24.11
+> **Verified**: December 2025 on Tesla V100-PCIE-32GB, CUDA 12.2, nvfortran 24.11
 
 | Dimension | Kernel | Grid/Particles | Time/Iteration | Throughput |
 |-----------|--------|----------------|----------------|------------|

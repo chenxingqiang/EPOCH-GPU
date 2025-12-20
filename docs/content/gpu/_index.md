@@ -5,8 +5,8 @@ summary: Complete guide to GPU-accelerated EPOCH simulations
 weight: 1
 
 # Page metadata.
-date: "2024-12-19T00:00:00Z"
-lastmod: "2024-12-19T00:00:00Z"
+date: "2025-12-19T00:00:00Z"
+lastmod: "2025-12-19T00:00:00Z"
 draft: false
 toc: true
 type: docs
@@ -18,7 +18,7 @@ menu:
     weight: 1
 ---
 
-> **Verified**: All tests passed on Tesla V100-PCIE-32GB (December 2024)
+> **Verified**: All tests passed on Tesla V100-PCIE-32GB (December 2025)
 
 EPOCH-GPU extends the EPOCH Particle-In-Cell code with NVIDIA GPU acceleration, 
 enabling high-performance plasma physics simulations on modern GPU hardware.
