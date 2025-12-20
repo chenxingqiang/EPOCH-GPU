@@ -249,7 +249,7 @@ deck_window_block.o: deck_window_block.f90 strings_advanced.o
 deltaf_loader.o: deltaf_loader.F90 shared_data.o
 diagnostics.o: diagnostics.F90 calc_df.o constants.o deck.o deck_io_block.o \
   dist_fn.o evaluate.o iterators.o particle_id_hash.o probes.o setup.o \
-  strings.o timer.o version_data.o window.o $(SDFMOD)
+  strings.o timer.o version_data.o window.o $(SDFMOD) epoch_source_info_dummy.o
 dist_fn.o: dist_fn.F90 mpi_subtype_control.o particles.o $(SDFMOD)
 epoch2d.o: epoch2d.F90 background_collisions.o balance.o bremsstrahlung.o \
   calc_df.o collisions.o collision_ionise.o current_smooth.o deck.o \
@@ -305,6 +305,9 @@ utilities.o: utilities.f90 constants.o shared_data.o
 version_data.o: version_data.F90 $(SRCDIR)/COMMIT
 welcome.o: welcome.F90 shared_data.o terminal_controls.o version_data.o
 window.o: window.F90 boundary.o evaluate.o partlist.o
+
+# epoch_source_info_dummy must be compiled early
+epoch_source_info_dummy.o: epoch_source_info_dummy.f90
 
 .PHONY: all clean cleanall
 
