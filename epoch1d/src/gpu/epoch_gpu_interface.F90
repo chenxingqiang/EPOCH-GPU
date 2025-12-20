@@ -174,6 +174,9 @@ CONTAINS
     ! Sync current back to CPU for field update
     !$ACC UPDATE HOST(jx, jy, jz)
     
+    ! Debug: print max current values
+    PRINT*, '1D GPU DEBUG: jx max = ', MAXVAL(ABS(jx)), ' jy max = ', MAXVAL(ABS(jy))
+    
     ! Clean up field arrays from GPU
     !$ACC EXIT DATA DELETE(ex, ey, ez, bx, by, bz)
     !$ACC EXIT DATA DELETE(jx, jy, jz)
