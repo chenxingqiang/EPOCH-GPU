@@ -416,6 +416,13 @@ CONTAINS
       qw_idt = charge * weight(ip) * idt  ! For Jx, Jy (charge conservation)
       qw_idxy = charge * weight(ip) * idx * idy  ! For Jz (velocity-based)
       
+      ! DEBUG: Print for first particle only
+      IF (ip == 1) THEN
+        PRINT*, 'DEBUG P1: dwx=', dwx(0), dwx(1), ' dwy=', dwy(0), dwy(1)
+        PRINT*, 'DEBUG P1: qw_idt=', qw_idt, ' idt=', idt
+        PRINT*, 'DEBUG P1: charge=', charge, ' weight=', weight(ip)
+      END IF
+      
       ! Esirkepov Jx deposition (cumulative in x)
       DO iy = -1, 2
         IF (iy_base + iy < 1 - ng .OR. iy_base + iy > ny + ng) CYCLE
