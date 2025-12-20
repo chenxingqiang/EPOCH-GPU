@@ -93,7 +93,7 @@ CONTAINS
     INTEGER, INTENT(IN) :: n_species, nx
     REAL(num), INTENT(IN) :: dt, dx
 #ifdef GPU_ENABLED
-    TYPE(particle_soa_t), INTENT(INOUT) :: species_soa(:)
+    TYPE(particle_soa_1d), INTENT(INOUT) :: species_soa(:)
     TYPE(particle_species), INTENT(IN) :: species_list(:)
     REAL(num), INTENT(INOUT) :: ex(:), ey(:), ez(:)
     REAL(num), INTENT(INOUT) :: bx(:), by(:), bz(:)

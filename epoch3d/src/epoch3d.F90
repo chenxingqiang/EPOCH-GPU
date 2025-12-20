@@ -71,7 +71,7 @@ PROGRAM pic
 #ifdef GPU_ENABLED
   ! GPU-related variables
   LOGICAL :: gpu_available = .FALSE.
-  TYPE(particle_soa_t), ALLOCATABLE :: species_soa(:)
+  TYPE(particle_soa_3d), ALLOCATABLE :: species_soa(:)
   INTEGER :: n_gpu_species
 #endif
   LOGICAL :: halt = .FALSE., push = .TRUE.

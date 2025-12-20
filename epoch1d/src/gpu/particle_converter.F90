@@ -38,7 +38,7 @@ CONTAINS
   !> @param[in]    species_id Species identifier
   !---------------------------------------------------------------------------
   SUBROUTINE allocate_soa_for_species(soa, n_particles, species_id)
-    TYPE(particle_soa_t), INTENT(INOUT) :: soa
+    TYPE(particle_soa_1d), INTENT(INOUT) :: soa
     INTEGER(i8), INTENT(IN) :: n_particles
     INTEGER, INTENT(IN) :: species_id
     
@@ -90,7 +90,7 @@ CONTAINS
   !> @param[inout] soa The SoA structure to deallocate
   !---------------------------------------------------------------------------
   SUBROUTINE deallocate_soa(soa)
-    TYPE(particle_soa_t), INTENT(INOUT) :: soa
+    TYPE(particle_soa_1d), INTENT(INOUT) :: soa
     
     IF (ALLOCATED(soa%pos_x)) DEALLOCATE(soa%pos_x)
     IF (ALLOCATED(soa%px)) DEALLOCATE(soa%px)
@@ -117,7 +117,7 @@ CONTAINS
   !---------------------------------------------------------------------------
   SUBROUTINE convert_species_to_soa(species, soa)
     TYPE(particle_species), INTENT(IN) :: species
-    TYPE(particle_soa_t), INTENT(INOUT) :: soa
+    TYPE(particle_soa_1d), INTENT(INOUT) :: soa
     
     TYPE(particle), POINTER :: current
     INTEGER(i8) :: ipart, n_particles
@@ -178,7 +178,7 @@ CONTAINS
   !> @param[inout] species   The particle species to update
   !---------------------------------------------------------------------------
   SUBROUTINE convert_soa_to_species(soa, species)
-    TYPE(particle_soa_t), INTENT(IN) :: soa
+    TYPE(particle_soa_1d), INTENT(IN) :: soa
     TYPE(particle_species), INTENT(INOUT) :: species
     
     TYPE(particle), POINTER :: current
@@ -224,7 +224,7 @@ CONTAINS
   !---------------------------------------------------------------------------
   SUBROUTINE sync_species_to_gpu(species, soa)
     TYPE(particle_species), INTENT(IN) :: species
-    TYPE(particle_soa_t), INTENT(INOUT) :: soa
+    TYPE(particle_soa_1d), INTENT(INOUT) :: soa
     
     ! Convert to SoA format
     CALL convert_species_to_soa(species, soa)
@@ -252,7 +252,7 @@ CONTAINS
   !> @param[inout] species   The particle species to update
   !---------------------------------------------------------------------------
   SUBROUTINE sync_species_from_gpu(soa, species)
-    TYPE(particle_soa_t), INTENT(INOUT) :: soa
+    TYPE(particle_soa_1d), INTENT(INOUT) :: soa
     TYPE(particle_species), INTENT(INOUT) :: species
     
     IF (soa%count <= 0) RETURN
