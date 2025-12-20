@@ -328,17 +328,13 @@ CONTAINS
       
       !$ACC ENTER DATA CREATE(ex_p, ey_p, ez_p, bx_p, by_p, bz_p)
       
-      ! Save old positions in SoA structure (already on GPU)
-      ! pos_x_old = pos_x before push
-      !$ACC PARALLEL LOOP PRESENT(species_soa(ispecies)%pos_x(1:np)) &
-      !$ACC& PRESENT(species_soa(ispecies)%pos_y(1:np)) &
-      !$ACC& PRESENT(species_soa(ispecies)%pos_x_old(1:np)) &
-      !$ACC& PRESENT(species_soa(ispecies)%pos_y_old(1:np))
-      DO ip = 1, np
-        species_soa(ispecies)%pos_x_old(ip) = species_soa(ispecies)%pos_x(ip)
-        species_soa(ispecies)%pos_y_old(ip) = species_soa(ispecies)%pos_y(ip)
-      END DO
-      !$ACC END PARALLEL LOOP
+      ! Save old positions: sync to CPU, copy, sync back to GPU
+      !$ACC UPDATE HOST(species_soa(ispecies)%pos_x(1:np))
+      !$ACC UPDATE HOST(species_soa(ispecies)%pos_y(1:np))
+      species_soa(ispecies)%pos_x_old(1:np) = species_soa(ispecies)%pos_x(1:np)
+      species_soa(ispecies)%pos_y_old(1:np) = species_soa(ispecies)%pos_y(1:np)
+      !$ACC UPDATE DEVICE(species_soa(ispecies)%pos_x_old(1:np))
+      !$ACC UPDATE DEVICE(species_soa(ispecies)%pos_y_old(1:np))
       
       ! Interpolate fields to particle positions
       CALL interpolate_fields_to_particles_gpu(np, &
