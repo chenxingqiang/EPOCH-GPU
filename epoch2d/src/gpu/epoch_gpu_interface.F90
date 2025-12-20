@@ -283,12 +283,15 @@ CONTAINS
   !>
   !> This handles field interpolation, Boris push, and current deposition
   !> for all species in a GPU-optimized manner.
+  !>
+  !> NOTE: This is a simplified version. For full functionality, the caller
+  !> must provide x_min, y_min, ng (ghost cells) from shared_data.
   !---------------------------------------------------------------------------
   SUBROUTINE gpu_push_all_species(species_soa, n_species, species_list, &
                                   ex, ey, ez, bx, by, bz, jx, jy, jz, &
                                   nx, ny, dt, dx, dy)
 #ifdef GPU_ENABLED
-    USE shared_data, ONLY: particle_species
+    USE shared_data, ONLY: particle_species, x_min, y_min, ng
 #endif
     
     INTEGER, INTENT(IN) :: n_species, nx, ny
@@ -304,7 +307,8 @@ CONTAINS
     INTEGER(i8) :: np
     REAL(num), ALLOCATABLE :: ex_p(:), ey_p(:), ez_p(:)
     REAL(num), ALLOCATABLE :: bx_p(:), by_p(:), bz_p(:)
-    REAL(num) :: charge, mass
+    REAL(num), ALLOCATABLE :: pos_x_old(:), pos_y_old(:)
+    REAL(num) :: charge, mass, weight_val
     
     DO ispecies = 1, n_species
       np = species_soa(ispecies)%count
@@ -312,12 +316,19 @@ CONTAINS
       
       charge = species_list(ispecies)%charge
       mass = species_list(ispecies)%mass
+      weight_val = species_list(ispecies)%weight
       
       ! Allocate temporary arrays for interpolated fields
       ALLOCATE(ex_p(np), ey_p(np), ez_p(np))
       ALLOCATE(bx_p(np), by_p(np), bz_p(np))
+      ALLOCATE(pos_x_old(np), pos_y_old(np))
+      
+      ! Save old positions for current deposition
+      pos_x_old = species_soa(ispecies)%pos_x(1:np)
+      pos_y_old = species_soa(ispecies)%pos_y(1:np)
       
       !$ACC ENTER DATA CREATE(ex_p, ey_p, ez_p, bx_p, by_p, bz_p)
+      !$ACC ENTER DATA COPYIN(pos_x_old, pos_y_old)
       
       ! Interpolate fields to particle positions
       CALL interpolate_fields_to_particles_gpu(np, &
@@ -326,7 +337,7 @@ CONTAINS
                                                ex, ey, ez, bx, by, bz, &
                                                ex_p, ey_p, ez_p, &
                                                bx_p, by_p, bz_p, &
-                                               nx, ny, dx, dy)
+                                               x_min, y_min, dx, dy, nx, ny, ng)
       
       ! Push particles using Boris algorithm
       CALL push_particles_gpu(np, &
@@ -338,20 +349,24 @@ CONTAINS
                               ex_p, ey_p, ez_p, bx_p, by_p, bz_p, &
                               charge, mass, dt)
       
-      ! Deposit current
+      ! Deposit current (using old and new positions)
       CALL deposit_current_gpu(np, &
                                species_soa(ispecies)%pos_x, &
                                species_soa(ispecies)%pos_y, &
+                               pos_x_old, pos_y_old, &
                                species_soa(ispecies)%px, &
                                species_soa(ispecies)%py, &
                                species_soa(ispecies)%pz, &
-                               species_soa(ispecies)%weight(1), &
-                               jx, jy, jz, charge, mass, dx, dy, nx, ny)
+                               weight_val, charge, mass, &
+                               jx, jy, jz, &
+                               x_min, y_min, dx, dy, dt, nx, ny, ng)
       
       ! Clean up temporary arrays
       !$ACC EXIT DATA DELETE(ex_p, ey_p, ez_p, bx_p, by_p, bz_p)
+      !$ACC EXIT DATA DELETE(pos_x_old, pos_y_old)
       DEALLOCATE(ex_p, ey_p, ez_p)
       DEALLOCATE(bx_p, by_p, bz_p)
+      DEALLOCATE(pos_x_old, pos_y_old)
     END DO
 #else
     TYPE(*), INTENT(INOUT) :: species_soa(:)
