@@ -411,39 +411,25 @@ CONTAINS
                        (pz(ip)*ipart_mc)**2 + 1.0_num)
       igamma = 1.0_num / gamma_rel
       
-      ! Use velocity-based deposition with simple first-order shape
-      ! Create shape functions directly at new position
+      ! DEBUG: Simple velocity-based deposition directly using ix_new, iy_new
       vz = pz(ip) * ipart_mc * igamma * c
       qw_idxy = charge * weight(ip) * idx * idy
       
-      ! Simple first-order shape at new position
-      ! Shape weights: w0 = 1-frac, w1 = frac
-      ! Deposit to cells ix_new and ix_new+1
-      DO iy = 0, 1
-        DO ix = 0, 1
-          IF (ix_new + ix >= 1 - ng .AND. ix_new + ix <= nx + ng .AND. &
-              iy_new + iy >= 1 - ng .AND. iy_new + iy <= ny + ng) THEN
-            ! Shape weights at new position
-            jx_accum = qw_idxy * px(ip) * ipart_mc * igamma * c * &
-                      (MERGE(1.0_num - frac_x_new, frac_x_new, ix == 0)) * &
-                      (MERGE(1.0_num - frac_y_new, frac_y_new, iy == 0))
-            !$ACC ATOMIC UPDATE
-            jx(ix_new + ix, iy_new + iy) = jx(ix_new + ix, iy_new + iy) + jx_accum
-            
-            jy_accum = qw_idxy * py(ip) * ipart_mc * igamma * c * &
-                      (MERGE(1.0_num - frac_x_new, frac_x_new, ix == 0)) * &
-                      (MERGE(1.0_num - frac_y_new, frac_y_new, iy == 0))
-            !$ACC ATOMIC UPDATE
-            jy(ix_new + ix, iy_new + iy) = jy(ix_new + ix, iy_new + iy) + jy_accum
-            
-            jz_contrib = qw_idxy * vz * &
-                        (MERGE(1.0_num - frac_x_new, frac_x_new, ix == 0)) * &
-                        (MERGE(1.0_num - frac_y_new, frac_y_new, iy == 0))
-            !$ACC ATOMIC UPDATE
-            jz(ix_new + ix, iy_new + iy) = jz(ix_new + ix, iy_new + iy) + jz_contrib
-          END IF
-        END DO
-      END DO
+      ! Clamp indices to valid range
+      ix = MAX(1, MIN(ix_new, nx))
+      iy = MAX(1, MIN(iy_new, ny))
+      
+      ! Simple NGP (Nearest Grid Point) deposition for debugging
+      jx_accum = qw_idxy * px(ip) * ipart_mc * igamma * c
+      jy_accum = qw_idxy * py(ip) * ipart_mc * igamma * c
+      jz_contrib = qw_idxy * vz
+      
+      !$ACC ATOMIC UPDATE
+      jx(ix, iy) = jx(ix, iy) + jx_accum
+      !$ACC ATOMIC UPDATE
+      jy(ix, iy) = jy(ix, iy) + jy_accum
+      !$ACC ATOMIC UPDATE
+      jz(ix, iy) = jz(ix, iy) + jz_contrib
     END DO
     !$ACC END PARALLEL LOOP
     
