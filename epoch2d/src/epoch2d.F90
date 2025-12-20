@@ -57,8 +57,21 @@ PROGRAM pic
 #ifdef BREMSSTRAHLUNG
   USE bremsstrahlung
 #endif
+#ifdef GPU_ENABLED
+  USE gpu_config
+  USE particle_data_gpu
+  USE particle_converter
+  USE epoch_gpu_interface
+#endif
 
   IMPLICIT NONE
+  
+#ifdef GPU_ENABLED
+  ! GPU-related variables
+  LOGICAL :: gpu_available = .FALSE.
+  TYPE(particle_soa_t), ALLOCATABLE :: species_soa(:)
+  INTEGER :: n_gpu_species
+#endif
 
   INTEGER :: ispecies, ierr
   LOGICAL :: halt = .FALSE., push = .TRUE.
@@ -180,6 +193,39 @@ PROGRAM pic
     PRINT*
   END IF
 
+#ifdef GPU_ENABLED
+  ! Initialize GPU acceleration
+  CALL gpu_init_all()
+  gpu_available = gpu_check_available()
+  
+  IF (gpu_available) THEN
+    IF (rank == 0) THEN
+      PRINT*, '=================================================='
+      PRINT*, '  GPU acceleration ENABLED'
+      CALL gpu_print_device_info()
+      PRINT*, '=================================================='
+      PRINT*
+    END IF
+    
+    ! Allocate SoA arrays for each species
+    n_gpu_species = n_species
+    ALLOCATE(species_soa(n_gpu_species))
+    
+    ! Convert all particle species to SoA and copy to GPU
+    DO ispecies = 1, n_species
+      CALL sync_species_to_gpu(species_list(ispecies), species_soa(ispecies))
+    END DO
+    
+    ! Copy field arrays to GPU
+    CALL copy_fields_to_gpu(ex, ey, ez, bx, by, bz, jx, jy, jz, &
+                            1-ng, nx+ng, 1-ng, ny+ng)
+  ELSE
+    IF (rank == 0) THEN
+      PRINT*, 'GPU requested but not available, falling back to CPU'
+    END IF
+  END IF
+#endif
+
   walltime_started = MPI_WTIME()
   IF (.NOT.ic_from_restart) CALL output_routines(step) ! diagnostics.f90
   IF (use_field_ionisation) CALL initialise_ionisation
@@ -208,12 +254,37 @@ PROGRAM pic
     END IF
 #endif
 
-    CALL update_eb_fields_half
+    ! Update E and B fields (first half step)
+#ifdef GPU_ENABLED
+    IF (gpu_available) THEN
+      CALL update_e_field_gpu(ex, ey, ez, bx, by, bz, jx, jy, jz, &
+                              nx, ny, dt, dx, dy)
+      CALL update_b_field_gpu(ex, ey, ez, bx, by, bz, nx, ny, dt, dx, dy)
+    ELSE
+#endif
+      CALL update_eb_fields_half
+#ifdef GPU_ENABLED
+    END IF
+#endif
+
     IF (push) THEN
       CALL run_injectors
       ! .FALSE. this time to use load balancing threshold
       IF (use_balance) CALL balance_workload(.FALSE.)
-      CALL push_particles
+      
+      ! Push particles
+#ifdef GPU_ENABLED
+      IF (gpu_available) THEN
+        ! GPU particle push for each species
+        CALL gpu_push_all_species(species_soa, n_species, species_list, &
+                                  ex, ey, ez, bx, by, bz, jx, jy, jz, &
+                                  nx, ny, dt, dx, dy)
+      ELSE
+#endif
+        CALL push_particles
+#ifdef GPU_ENABLED
+      END IF
+#endif
       IF (use_particle_lists) THEN
         ! Check whether this is a step with collisions or collisional ionisation
         collision_step = (MODULO(step, coll_n_step) == coll_n_step - 1) &
@@ -262,10 +333,42 @@ PROGRAM pic
     CALL output_routines(step)
     time = time + dt / 2.0_num
 
-    CALL update_eb_fields_final
+    ! Update E and B fields (final half step)
+#ifdef GPU_ENABLED
+    IF (gpu_available) THEN
+      CALL update_e_field_gpu(ex, ey, ez, bx, by, bz, jx, jy, jz, &
+                              nx, ny, dt, dx, dy)
+      CALL update_b_field_gpu(ex, ey, ez, bx, by, bz, nx, ny, dt, dx, dy)
+    ELSE
+#endif
+      CALL update_eb_fields_final
+#ifdef GPU_ENABLED
+    END IF
+#endif
 
     CALL moving_window
   END DO
+
+#ifdef GPU_ENABLED
+  ! Copy data back from GPU and cleanup
+  IF (gpu_available) THEN
+    ! Copy fields back from GPU
+    CALL copy_fields_from_gpu(ex, ey, ez, bx, by, bz, jx, jy, jz, &
+                              1-ng, nx+ng, 1-ng, ny+ng)
+    
+    ! Copy particles back from GPU
+    DO ispecies = 1, n_species
+      CALL sync_species_from_gpu(species_soa(ispecies), species_list(ispecies))
+    END DO
+    
+    DEALLOCATE(species_soa)
+    CALL gpu_finalize_all()
+    
+    IF (rank == 0) THEN
+      PRINT*, 'GPU acceleration completed successfully'
+    END IF
+  END IF
+#endif
 
   IF (rank == 0) runtime = MPI_WTIME() - walltime_started
 

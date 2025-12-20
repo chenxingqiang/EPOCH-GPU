@@ -12,15 +12,20 @@
 
 MODULE epoch_gpu_interface
 
+  USE, INTRINSIC :: iso_fortran_env, ONLY: REAL64, INT64
 #ifdef GPU_ENABLED
   USE gpu_config
   USE fields_gpu
   USE particles_gpu
   USE particle_data_gpu
+  USE particle_converter
 #endif
 
   IMPLICIT NONE
   PRIVATE
+
+  INTEGER, PARAMETER :: num = REAL64
+  INTEGER, PARAMETER :: i8 = INT64
 
   ! Public interface
   PUBLIC :: epoch_gpu_initialize
@@ -30,6 +35,9 @@ MODULE epoch_gpu_interface
   PUBLIC :: epoch_gpu_sync_fields_to_device
   PUBLIC :: epoch_gpu_sync_fields_to_host
   PUBLIC :: epoch_gpu_is_enabled
+  PUBLIC :: gpu_push_all_species
+  PUBLIC :: copy_fields_to_gpu
+  PUBLIC :: copy_fields_from_gpu
 
   ! Module state
   LOGICAL, SAVE :: gpu_initialized = .FALSE.
@@ -221,6 +229,143 @@ CONTAINS
 #endif
 
   END SUBROUTINE epoch_gpu_sync_fields_to_host
+
+
+  !---------------------------------------------------------------------------
+  !> @brief Copy field arrays to GPU
+  !---------------------------------------------------------------------------
+  SUBROUTINE copy_fields_to_gpu(ex, ey, ez, bx, by, bz, jx, jy, jz, &
+                                imin, imax, jmin, jmax)
+    INTEGER, INTENT(IN) :: imin, imax, jmin, jmax
+    REAL(num), INTENT(IN) :: ex(imin:imax, jmin:jmax)
+    REAL(num), INTENT(IN) :: ey(imin:imax, jmin:jmax)
+    REAL(num), INTENT(IN) :: ez(imin:imax, jmin:jmax)
+    REAL(num), INTENT(IN) :: bx(imin:imax, jmin:jmax)
+    REAL(num), INTENT(IN) :: by(imin:imax, jmin:jmax)
+    REAL(num), INTENT(IN) :: bz(imin:imax, jmin:jmax)
+    REAL(num), INTENT(IN) :: jx(imin:imax, jmin:jmax)
+    REAL(num), INTENT(IN) :: jy(imin:imax, jmin:jmax)
+    REAL(num), INTENT(IN) :: jz(imin:imax, jmin:jmax)
+
+#ifdef GPU_ENABLED
+    !$ACC ENTER DATA COPYIN(ex, ey, ez, bx, by, bz, jx, jy, jz)
+#endif
+
+  END SUBROUTINE copy_fields_to_gpu
+
+
+  !---------------------------------------------------------------------------
+  !> @brief Copy field arrays from GPU
+  !---------------------------------------------------------------------------
+  SUBROUTINE copy_fields_from_gpu(ex, ey, ez, bx, by, bz, jx, jy, jz, &
+                                  imin, imax, jmin, jmax)
+    INTEGER, INTENT(IN) :: imin, imax, jmin, jmax
+    REAL(num), INTENT(INOUT) :: ex(imin:imax, jmin:jmax)
+    REAL(num), INTENT(INOUT) :: ey(imin:imax, jmin:jmax)
+    REAL(num), INTENT(INOUT) :: ez(imin:imax, jmin:jmax)
+    REAL(num), INTENT(INOUT) :: bx(imin:imax, jmin:jmax)
+    REAL(num), INTENT(INOUT) :: by(imin:imax, jmin:jmax)
+    REAL(num), INTENT(INOUT) :: bz(imin:imax, jmin:jmax)
+    REAL(num), INTENT(INOUT) :: jx(imin:imax, jmin:jmax)
+    REAL(num), INTENT(INOUT) :: jy(imin:imax, jmin:jmax)
+    REAL(num), INTENT(INOUT) :: jz(imin:imax, jmin:jmax)
+
+#ifdef GPU_ENABLED
+    !$ACC UPDATE HOST(ex, ey, ez, bx, by, bz, jx, jy, jz)
+    !$ACC EXIT DATA DELETE(ex, ey, ez, bx, by, bz, jx, jy, jz)
+#endif
+
+  END SUBROUTINE copy_fields_from_gpu
+
+
+  !---------------------------------------------------------------------------
+  !> @brief Push all particle species on GPU
+  !>
+  !> This handles field interpolation, Boris push, and current deposition
+  !> for all species in a GPU-optimized manner.
+  !---------------------------------------------------------------------------
+  SUBROUTINE gpu_push_all_species(species_soa, n_species, species_list, &
+                                  ex, ey, ez, bx, by, bz, jx, jy, jz, &
+                                  nx, ny, dt, dx, dy)
+#ifdef GPU_ENABLED
+    USE shared_data, ONLY: particle_species
+#endif
+    
+    INTEGER, INTENT(IN) :: n_species, nx, ny
+    REAL(num), INTENT(IN) :: dt, dx, dy
+#ifdef GPU_ENABLED
+    TYPE(particle_soa_t), INTENT(INOUT) :: species_soa(:)
+    TYPE(particle_species), INTENT(IN) :: species_list(:)
+    REAL(num), INTENT(INOUT) :: ex(:,:), ey(:,:), ez(:,:)
+    REAL(num), INTENT(INOUT) :: bx(:,:), by(:,:), bz(:,:)
+    REAL(num), INTENT(INOUT) :: jx(:,:), jy(:,:), jz(:,:)
+    
+    INTEGER :: ispecies
+    INTEGER(i8) :: np
+    REAL(num), ALLOCATABLE :: ex_p(:), ey_p(:), ez_p(:)
+    REAL(num), ALLOCATABLE :: bx_p(:), by_p(:), bz_p(:)
+    REAL(num) :: charge, mass
+    
+    DO ispecies = 1, n_species
+      np = species_soa(ispecies)%count
+      IF (np <= 0) CYCLE
+      
+      charge = species_list(ispecies)%charge
+      mass = species_list(ispecies)%mass
+      
+      ! Allocate temporary arrays for interpolated fields
+      ALLOCATE(ex_p(np), ey_p(np), ez_p(np))
+      ALLOCATE(bx_p(np), by_p(np), bz_p(np))
+      
+      !$ACC ENTER DATA CREATE(ex_p, ey_p, ez_p, bx_p, by_p, bz_p)
+      
+      ! Interpolate fields to particle positions
+      CALL interpolate_fields_to_particles_gpu(np, &
+                                               species_soa(ispecies)%pos_x, &
+                                               species_soa(ispecies)%pos_y, &
+                                               ex, ey, ez, bx, by, bz, &
+                                               ex_p, ey_p, ez_p, &
+                                               bx_p, by_p, bz_p, &
+                                               nx, ny, dx, dy)
+      
+      ! Push particles using Boris algorithm
+      CALL push_particles_gpu(np, &
+                              species_soa(ispecies)%pos_x, &
+                              species_soa(ispecies)%pos_y, &
+                              species_soa(ispecies)%px, &
+                              species_soa(ispecies)%py, &
+                              species_soa(ispecies)%pz, &
+                              ex_p, ey_p, ez_p, bx_p, by_p, bz_p, &
+                              charge, mass, dt)
+      
+      ! Deposit current
+      CALL deposit_current_gpu(np, &
+                               species_soa(ispecies)%pos_x, &
+                               species_soa(ispecies)%pos_y, &
+                               species_soa(ispecies)%px, &
+                               species_soa(ispecies)%py, &
+                               species_soa(ispecies)%pz, &
+                               species_soa(ispecies)%weight(1), &
+                               jx, jy, jz, charge, mass, dx, dy, nx, ny)
+      
+      ! Clean up temporary arrays
+      !$ACC EXIT DATA DELETE(ex_p, ey_p, ez_p, bx_p, by_p, bz_p)
+      DEALLOCATE(ex_p, ey_p, ez_p)
+      DEALLOCATE(bx_p, by_p, bz_p)
+    END DO
+#else
+    TYPE(*), INTENT(INOUT) :: species_soa(:)
+    TYPE(*), INTENT(IN) :: species_list(:)
+    REAL(num), INTENT(INOUT) :: ex(:,:), ey(:,:), ez(:,:)
+    REAL(num), INTENT(INOUT) :: bx(:,:), by(:,:), bz(:,:)
+    REAL(num), INTENT(INOUT) :: jx(:,:), jy(:,:), jz(:,:)
+    ! Suppress unused warnings
+    IF (.FALSE.) THEN
+      CONTINUE
+    END IF
+#endif
+    
+  END SUBROUTINE gpu_push_all_species
 
 END MODULE epoch_gpu_interface
 
