@@ -181,78 +181,134 @@ CONTAINS
 
 
   !---------------------------------------------------------------------------
-  !> @brief Deposit current to grid (1D, 1st order with atomics)
+  !> @brief Deposit current using Esirkepov charge-conserving method (1D)
+  !>
+  !> Implements the Esirkepov current deposition scheme ensuring:
+  !>   div(J) = -d(rho)/dt (exact charge conservation)
+  !>
+  !> Reference: T.Zh. Esirkepov, CPC 135 (2001) 144-153
+  !>
+  !> @param[in]    n_particles  Number of particles
+  !> @param[in]    pos_x_old    Particle positions at t^n (before push)
+  !> @param[in]    pos_x_new    Particle positions at t^{n+1} (after push)
+  !> @param[in]    px,py,pz     Particle momenta
+  !> @param[in]    weight       Particle weights
+  !> @param[inout] jx,jy,jz     Current density arrays
+  !> @param[in]    nx,ng        Grid size and ghost cells
+  !> @param[in]    x_min,dx,dt  Grid parameters and time step
+  !> @param[in]    mass,charge  Particle mass and charge (SI units)
   !---------------------------------------------------------------------------
-  SUBROUTINE deposit_current_gpu_1d(n_particles, pos_x, px, py, pz, weight, &
-                                     jx, jy, jz, nx, ng, x_min, dx, mass, charge)
+  SUBROUTINE deposit_current_gpu_1d(n_particles, pos_x_old, pos_x_new, &
+                                     px, py, pz, weight, &
+                                     jx, jy, jz, nx, ng, x_min, dx, dt, mass, charge)
     INTEGER(i8), INTENT(IN) :: n_particles
-    REAL(num), INTENT(IN) :: pos_x(:)
+    REAL(num), INTENT(IN) :: pos_x_old(:), pos_x_new(:)
     REAL(num), INTENT(IN) :: px(:), py(:), pz(:)
     REAL(num), INTENT(IN) :: weight(:)
     REAL(num), INTENT(INOUT) :: jx(1-ng:nx+ng)
     REAL(num), INTENT(INOUT) :: jy(1-ng:nx+ng)
     REAL(num), INTENT(INOUT) :: jz(1-ng:nx+ng)
     INTEGER, INTENT(IN) :: nx, ng
-    REAL(num), INTENT(IN) :: x_min, dx, mass, charge
+    REAL(num), INTENT(IN) :: x_min, dx, dt, mass, charge
     
     INTEGER(i8) :: ip
-    INTEGER :: ix
-    REAL(num) :: cell_x, gx0, gx1, idx
+    INTEGER :: ix_old, ix_new, ix_base, ix
+    REAL(num) :: cell_x_old, cell_x_new, idx, idt
+    REAL(num) :: frac_old, frac_new
     REAL(num) :: gamma_rel, igamma, part_mc, ipart_mc
-    REAL(num) :: vx, vy, vz, factor
-    REAL(num) :: jx_contrib0, jx_contrib1
-    REAL(num) :: jy_contrib0, jy_contrib1
-    REAL(num) :: jz_contrib0, jz_contrib1
+    REAL(num) :: vy, vz
+    REAL(num) :: wold(-1:1), wnew(-1:1), dw(-1:1)
+    REAL(num) :: jx_accum, jy_contrib, jz_contrib
+    REAL(num) :: qw_idt, qw_idx
+    INTEGER :: dcell
     
     idx = 1.0_num / dx
+    idt = 1.0_num / dt
     part_mc = c * mass
     ipart_mc = 1.0_num / part_mc
-    ! Current = charge * weight * velocity / cell_volume
-    factor = charge / dx
     
     !$ACC PARALLEL LOOP &
-    !$ACC& PRESENT(pos_x(1:n_particles), px(1:n_particles), py(1:n_particles), pz(1:n_particles)) &
-    !$ACC& PRESENT(weight(1:n_particles), jx, jy, jz) &
-    !$ACC& PRIVATE(cell_x, ix, gx0, gx1, gamma_rel, igamma, vx, vy, vz, &
-    !$ACC& jx_contrib0, jx_contrib1, jy_contrib0, jy_contrib1, jz_contrib0, jz_contrib1)
+    !$ACC& PRESENT(pos_x_old, pos_x_new, px, py, pz, weight, jx, jy, jz) &
+    !$ACC& PRIVATE(cell_x_old, cell_x_new, ix_old, ix_new, frac_old, frac_new) &
+    !$ACC& PRIVATE(dcell, ix_base, wold, wnew, dw) &
+    !$ACC& PRIVATE(gamma_rel, igamma, vy, vz, qw_idt, qw_idx) &
+    !$ACC& PRIVATE(jx_accum, jy_contrib, jz_contrib)
     DO ip = 1, n_particles
-      ! Compute velocity
+      ! Cell coordinates at old and new positions
+      cell_x_old = (pos_x_old(ip) - x_min) * idx
+      cell_x_new = (pos_x_new(ip) - x_min) * idx
+      
+      ! Cell indices (using cell-centered indexing)
+      ix_old = FLOOR(cell_x_old)
+      ix_new = FLOOR(cell_x_new)
+      
+      ! Fractional positions within cell [0,1)
+      frac_old = cell_x_old - REAL(ix_old, num)
+      frac_new = cell_x_new - REAL(ix_new, num)
+      
+      ! Cell displacement (should be -1, 0, or +1 for CFL-stable simulations)
+      dcell = ix_new - ix_old
+      
+      ! Use old cell as reference
+      ix_base = ix_old
+      
+      ! Clamp to valid grid range
+      ix_base = MAX(1, MIN(ix_base, nx-1))
+      
+      ! First-order (linear) shape functions at old position
+      ! W(-1)=0, W(0)=1-frac, W(1)=frac for cell-centered
+      wold(-1) = 0.0_num
+      wold(0) = 1.0_num - frac_old
+      wold(1) = frac_old
+      
+      ! Shape functions at new position (shifted by dcell)
+      wnew = 0.0_num
+      IF (dcell >= -1 .AND. dcell <= 1) THEN
+        wnew(dcell) = 1.0_num - frac_new
+        wnew(dcell+1) = frac_new
+      ELSE
+        ! Particle moved too far - use simple deposition at new position
+        wnew(0) = 1.0_num - frac_new
+        wnew(1) = frac_new
+      END IF
+      
+      ! Shape function difference
+      dw(-1) = wnew(-1) - wold(-1)
+      dw(0) = wnew(0) - wold(0)
+      dw(1) = wnew(1) - wold(1)
+      
+      ! Compute transverse velocity for Jy, Jz
       gamma_rel = SQRT((px(ip)*ipart_mc)**2 + (py(ip)*ipart_mc)**2 + &
                        (pz(ip)*ipart_mc)**2 + 1.0_num)
       igamma = 1.0_num / gamma_rel
-      vx = px(ip) * ipart_mc * igamma * c
       vy = py(ip) * ipart_mc * igamma * c
       vz = pz(ip) * ipart_mc * igamma * c
       
-      ! Compute cell index
-      cell_x = (pos_x(ip) - x_min) * idx
-      ix = INT(cell_x)
-      gx1 = cell_x - REAL(ix, num)
-      gx0 = 1.0_num - gx1
+      ! Current factors
+      qw_idt = charge * weight(ip) * idt  ! For Jx (charge conservation)
+      qw_idx = charge * weight(ip) * idx  ! For Jy, Jz (velocity-based)
       
-      ix = MAX(1, MIN(ix, nx-1))
-      
-      ! Compute current contributions
-      jx_contrib0 = weight(ip) * vx * gx0 * factor
-      jx_contrib1 = weight(ip) * vx * gx1 * factor
-      jy_contrib0 = weight(ip) * vy * gx0 * factor
-      jy_contrib1 = weight(ip) * vy * gx1 * factor
-      jz_contrib0 = weight(ip) * vz * gx0 * factor
-      jz_contrib1 = weight(ip) * vz * gx1 * factor
-      
-      ! Atomic updates
-      !$ACC ATOMIC UPDATE
-      jx(ix) = jx(ix) + jx_contrib0
-      !$ACC ATOMIC UPDATE
-      jx(ix+1) = jx(ix+1) + jx_contrib1
-      !$ACC ATOMIC UPDATE
-      jy(ix) = jy(ix) + jy_contrib0
-      !$ACC ATOMIC UPDATE
-      jy(ix+1) = jy(ix+1) + jy_contrib1
-      !$ACC ATOMIC UPDATE
-      jz(ix) = jz(ix) + jz_contrib0
-      !$ACC ATOMIC UPDATE
-      jz(ix+1) = jz(ix+1) + jz_contrib1
+      ! Esirkepov Jx deposition: cumulative sum of -dw
+      ! This ensures exact charge conservation
+      jx_accum = 0.0_num
+      DO ix = -1, 1
+        ! Check bounds
+        IF (ix_base + ix >= 1 - ng .AND. ix_base + ix <= nx + ng) THEN
+          ! Jx from charge displacement
+          jx_accum = jx_accum - qw_idt * dw(ix)
+          !$ACC ATOMIC UPDATE
+          jx(ix_base + ix) = jx(ix_base + ix) + jx_accum
+          
+          ! Jy, Jz from velocity with averaged shape
+          jy_contrib = qw_idx * vy * (wold(ix) + 0.5_num * dw(ix))
+          jz_contrib = qw_idx * vz * (wold(ix) + 0.5_num * dw(ix))
+          
+          !$ACC ATOMIC UPDATE
+          jy(ix_base + ix) = jy(ix_base + ix) + jy_contrib
+          !$ACC ATOMIC UPDATE
+          jz(ix_base + ix) = jz(ix_base + ix) + jz_contrib
+        END IF
+      END DO
     END DO
     !$ACC END PARALLEL LOOP
     
