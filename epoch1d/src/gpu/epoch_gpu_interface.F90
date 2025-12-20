@@ -176,6 +176,7 @@ CONTAINS
     
     ! Debug: print max current values
     PRINT*, '1D GPU DEBUG: jx max = ', MAXVAL(ABS(jx)), ' jy max = ', MAXVAL(ABS(jy))
+    PRINT*, '1D GPU DEBUG: first species charge = ', species_list(1)%charge, ' * q0 = ', species_list(1)%charge * q0
     
     ! Clean up field arrays from GPU
     !$ACC EXIT DATA DELETE(ex, ey, ez, bx, by, bz)
