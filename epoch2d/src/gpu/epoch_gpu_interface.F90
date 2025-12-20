@@ -328,19 +328,15 @@ CONTAINS
       ALLOCATE(bx_p(np), by_p(np), bz_p(np))
       ALLOCATE(pos_x_old(np), pos_y_old(np))
       
-      ! Transfer temporary arrays to GPU
-      !$ACC ENTER DATA CREATE(ex_p, ey_p, ez_p, bx_p, by_p, bz_p)
-      !$ACC ENTER DATA CREATE(pos_x_old(1:np), pos_y_old(1:np))
+      ! Save old positions: GPU -> CPU -> pos_old -> GPU
+      !$ACC UPDATE HOST(species_soa(ispecies)%pos_x(1:np))
+      !$ACC UPDATE HOST(species_soa(ispecies)%pos_y(1:np))
+      pos_x_old(1:np) = species_soa(ispecies)%pos_x(1:np)
+      pos_y_old(1:np) = species_soa(ispecies)%pos_y(1:np)
       
-      ! Save old positions on GPU BEFORE push (for Esirkepov method)
-      !$ACC PARALLEL LOOP PRESENT(species_soa(ispecies)%pos_x(1:np)) &
-      !$ACC& PRESENT(species_soa(ispecies)%pos_y(1:np)) &
-      !$ACC& PRESENT(pos_x_old(1:np), pos_y_old(1:np))
-      DO ip = 1, np
-        pos_x_old(ip) = species_soa(ispecies)%pos_x(ip)
-        pos_y_old(ip) = species_soa(ispecies)%pos_y(ip)
-      END DO
-      !$ACC END PARALLEL LOOP
+      ! Transfer to GPU
+      !$ACC ENTER DATA COPYIN(pos_x_old(1:np), pos_y_old(1:np))
+      !$ACC ENTER DATA CREATE(ex_p, ey_p, ez_p, bx_p, by_p, bz_p)
       
       ! Interpolate fields to particle positions
       CALL interpolate_fields_to_particles_gpu(np, &
