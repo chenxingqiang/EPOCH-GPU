@@ -15,14 +15,17 @@ menu:
 
 ```
 epoch{1,2,3}d/src/gpu/
-├── gpu_config.F90          # GPU device management
-├── particle_data_gpu.F90   # SoA particle structures
-├── fields_gpu.F90          # FDTD field solver
+├── gpu_config.F90          # GPU device management & initialization
+├── particle_data_gpu.F90   # SoA particle structures (dimension-specific)
+├── fields_gpu.F90          # FDTD field solver kernels
 ├── particles_gpu.F90       # Particle pusher, interpolation, deposition
-├── epoch_gpu_interface.F90 # High-level integration (2D only)
-├── Makefile.gpu            # GPU build configuration
-└── test_gpu_{1,2,3}d.F90   # Integration tests
+├── particle_converter.F90  # AoS ↔ SoA conversion utilities
+├── epoch_gpu_interface.F90 # High-level integration layer
+├── test_gpu_{1,2,3}d.F90   # GPU kernel integration tests
+└── test_converter.F90      # Particle converter unit tests
 ```
+
+**Note**: All three dimensions (1D, 2D, 3D) now have complete GPU integration with unified interfaces.
 
 ## Module Descriptions
 
@@ -148,4 +151,54 @@ Data residency is managed with OpenACC directives:
 ! Free device memory
 !$ACC EXIT DATA DELETE(ex, ey, ez, bx, by, bz, jx, jy, jz)
 ```
+
+## Algorithm Design Choices
+
+### Current Deposition Method
+
+EPOCH-GPU uses **velocity-based current deposition** for all dimensions (1D, 2D, 3D):
+
+```fortran
+! Calculate velocity from relativistic momentum
+gamma = SQRT(1 + (p/mc)^2)
+v = p / (gamma * m)
+
+! Deposit current: j = q * n * v
+jx += weight * charge * vx / cell_volume
+jy += weight * charge * vy / cell_volume
+jz += weight * charge * vz / cell_volume
+```
+
+**Why not Esirkepov (charge-conserving) method?**
+
+1. **Simplicity**: Velocity-based deposition is straightforward to implement and debug
+2. **Performance**: Fewer operations per particle; no need to track old positions
+3. **Sufficient accuracy**: For most PIC simulations, velocity-based deposition provides adequate results
+4. **Future work**: Esirkepov method can be added as an option for applications requiring strict charge conservation
+
+### Unified Interface Design
+
+All three dimensions (1D, 2D, 3D) share the same interface pattern:
+
+| Function | 1D | 2D | 3D |
+|----------|----|----|-----|
+| `push_particles_gpu` | ✓ | ✓ | ✓ |
+| `interpolate_fields_to_particles_gpu` | ✓ | ✓ | ✓ |
+| `deposit_current_gpu` | ✓ | ✓ | ✓ |
+
+The dimension-specific implementations are provided via Fortran generic interfaces:
+
+```fortran
+! In particles_gpu.F90
+INTERFACE push_particles_gpu
+  MODULE PROCEDURE push_particles_gpu_1d  ! or _2d, _3d
+END INTERFACE
+```
+
+### Field Solver Status
+
+Currently, field updates (E and B) remain on CPU:
+
+- **Reason**: Complex boundary conditions and MPI communication patterns
+- **Plan**: GPU field solver is functional but disabled in main integration pending further testing
 
