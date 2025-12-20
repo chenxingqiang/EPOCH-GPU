@@ -44,7 +44,7 @@ SDF = ../SDF/FORTRAN
 #---------------------------------------------------------------------------
 
 MODULEFLAG = -module $(OBJDIR) -I$(OBJDIR)
-FFLAGS += -I$(SDF)/include -I$(SDF) $(MODULEFLAG)
+FFLAGS += -I$(SDF)/include -I$(SDF) $(MODULEFLAG) -cuda
 LDFLAGS = $(FFLAGS) -L$(SDF)/lib -lsdf
 
 #---------------------------------------------------------------------------

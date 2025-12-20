@@ -23,6 +23,23 @@ MODULE particles_gpu
   PUBLIC :: push_particles_gpu_1d
   PUBLIC :: interpolate_fields_gpu_1d
   PUBLIC :: deposit_current_gpu_1d
+  
+  ! Generic interface for epoch_gpu_interface compatibility
+  PUBLIC :: push_particles_gpu
+  PUBLIC :: interpolate_fields_to_particles_gpu
+  PUBLIC :: deposit_current_gpu
+  
+  INTERFACE push_particles_gpu
+    MODULE PROCEDURE push_particles_gpu_1d
+  END INTERFACE
+  
+  INTERFACE interpolate_fields_to_particles_gpu
+    MODULE PROCEDURE interpolate_fields_gpu_1d
+  END INTERFACE
+  
+  INTERFACE deposit_current_gpu
+    MODULE PROCEDURE deposit_current_gpu_1d
+  END INTERFACE
 
 CONTAINS
 
