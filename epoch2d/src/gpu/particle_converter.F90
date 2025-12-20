@@ -63,6 +63,8 @@ CONTAINS
     ! Allocate arrays
     ALLOCATE(soa%pos_x(capacity))
     ALLOCATE(soa%pos_y(capacity))
+    ALLOCATE(soa%pos_x_old(capacity))
+    ALLOCATE(soa%pos_y_old(capacity))
     ALLOCATE(soa%px(capacity))
     ALLOCATE(soa%py(capacity))
     ALLOCATE(soa%pz(capacity))
@@ -78,6 +80,8 @@ CONTAINS
     ! Initialize arrays to zero
     soa%pos_x = 0.0_num
     soa%pos_y = 0.0_num
+    soa%pos_x_old = 0.0_num
+    soa%pos_y_old = 0.0_num
     soa%px = 0.0_num
     soa%py = 0.0_num
     soa%pz = 0.0_num
@@ -98,6 +102,8 @@ CONTAINS
     
     IF (ALLOCATED(soa%pos_x)) DEALLOCATE(soa%pos_x)
     IF (ALLOCATED(soa%pos_y)) DEALLOCATE(soa%pos_y)
+    IF (ALLOCATED(soa%pos_x_old)) DEALLOCATE(soa%pos_x_old)
+    IF (ALLOCATED(soa%pos_y_old)) DEALLOCATE(soa%pos_y_old)
     IF (ALLOCATED(soa%px)) DEALLOCATE(soa%px)
     IF (ALLOCATED(soa%py)) DEALLOCATE(soa%py)
     IF (ALLOCATED(soa%pz)) DEALLOCATE(soa%pz)
