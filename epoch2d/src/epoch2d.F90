@@ -268,6 +268,10 @@ PROGRAM pic
       ! Push particles
 #ifdef GPU_ENABLED
       IF (gpu_available) THEN
+        ! Clear current arrays before GPU particle push (as done in CPU version)
+        jx = 0.0_num
+        jy = 0.0_num
+        jz = 0.0_num
         ! GPU particle push for each species
         CALL gpu_push_all_species(species_soa, n_species, species_list, &
                                   ex, ey, ez, bx, by, bz, jx, jy, jz, &
