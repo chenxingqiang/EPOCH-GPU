@@ -245,92 +245,189 @@ CONTAINS
 
 
   !---------------------------------------------------------------------------
-  !> @brief Deposit current to grid (3D, 1st order with atomics)
+  !> @brief Deposit current using Esirkepov charge-conserving method (3D)
+  !>
+  !> Implements the Esirkepov current deposition scheme ensuring:
+  !>   div(J) = -d(rho)/dt (exact charge conservation)
+  !>
+  !> Reference: T.Zh. Esirkepov, CPC 135 (2001) 144-153
   !---------------------------------------------------------------------------
-  SUBROUTINE deposit_current_gpu_3d(n_particles, pos_x, pos_y, pos_z, &
-                                     px, py, pz, weight, &
+  SUBROUTINE deposit_current_gpu_3d(n_particles, &
+                                     pos_x_old, pos_y_old, pos_z_old, &
+                                     pos_x_new, pos_y_new, pos_z_new, &
+                                     px, py, pz, weight, charge, mass, &
                                      jx, jy, jz, nx, ny, nz, ng, &
-                                     x_min, y_min, z_min, dx, dy, dz, mass)
+                                     x_min, y_min, z_min, dx, dy, dz, dt)
     INTEGER(i8), INTENT(IN) :: n_particles
-    REAL(num), INTENT(IN) :: pos_x(:), pos_y(:), pos_z(:)
+    REAL(num), INTENT(IN) :: pos_x_old(:), pos_y_old(:), pos_z_old(:)
+    REAL(num), INTENT(IN) :: pos_x_new(:), pos_y_new(:), pos_z_new(:)
     REAL(num), INTENT(IN) :: px(:), py(:), pz(:)
     REAL(num), INTENT(IN) :: weight(:)
+    REAL(num), INTENT(IN) :: charge, mass
     REAL(num), INTENT(INOUT) :: jx(1-ng:nx+ng, 1-ng:ny+ng, 1-ng:nz+ng)
     REAL(num), INTENT(INOUT) :: jy(1-ng:nx+ng, 1-ng:ny+ng, 1-ng:nz+ng)
     REAL(num), INTENT(INOUT) :: jz(1-ng:nx+ng, 1-ng:ny+ng, 1-ng:nz+ng)
     INTEGER, INTENT(IN) :: nx, ny, nz, ng
-    REAL(num), INTENT(IN) :: x_min, y_min, z_min, dx, dy, dz, mass
+    REAL(num), INTENT(IN) :: x_min, y_min, z_min, dx, dy, dz, dt
     
     INTEGER(i8) :: ip
-    INTEGER :: ix, iy, iz, i, j, k
-    REAL(num) :: cell_x, cell_y, cell_z
-    REAL(num) :: gx0, gx1, gy0, gy1, gz0, gz1
-    REAL(num) :: idx, idy, idz
-    REAL(num) :: gamma_rel, igamma, part_mc, ipart_mc
-    REAL(num) :: vx, vy, vz, factor
-    REAL(num) :: wx(0:1), wy(0:1), wz(0:1)
-    REAL(num) :: jx_contrib, jy_contrib, jz_contrib
+    INTEGER :: ix_old, iy_old, iz_old, ix_new, iy_new, iz_new
+    INTEGER :: ix_base, iy_base, iz_base, ix, iy, iz
+    INTEGER :: dcellx, dcelly, dcellz
+    REAL(num) :: idx, idy, idz, idt
+    REAL(num) :: cell_x_old, cell_y_old, cell_z_old
+    REAL(num) :: cell_x_new, cell_y_new, cell_z_new
+    REAL(num) :: frac_x_old, frac_y_old, frac_z_old
+    REAL(num) :: frac_x_new, frac_y_new, frac_z_new
+    REAL(num) :: wx_old(-1:1), wy_old(-1:1), wz_old(-1:1)
+    REAL(num) :: wx_new(-1:1), wy_new(-1:1), wz_new(-1:1)
+    REAL(num) :: dwx(-1:1), dwy(-1:1), dwz(-1:1)
+    REAL(num) :: qw_idt, jx_accum, jy_accum, jz_accum
     
     idx = 1.0_num / dx
     idy = 1.0_num / dy
     idz = 1.0_num / dz
-    part_mc = c * mass
-    ipart_mc = 1.0_num / part_mc
-    factor = 1.0_num / (dx * dy * dz)
+    idt = 1.0_num / dt
     
     !$ACC PARALLEL LOOP &
-    !$ACC& PRESENT(pos_x(1:n_particles), pos_y(1:n_particles), pos_z(1:n_particles)) &
+    !$ACC& PRESENT(pos_x_old(1:n_particles), pos_y_old(1:n_particles), pos_z_old(1:n_particles)) &
+    !$ACC& PRESENT(pos_x_new(1:n_particles), pos_y_new(1:n_particles), pos_z_new(1:n_particles)) &
     !$ACC& PRESENT(px(1:n_particles), py(1:n_particles), pz(1:n_particles)) &
     !$ACC& PRESENT(weight(1:n_particles), jx, jy, jz) &
-    !$ACC& PRIVATE(cell_x, cell_y, cell_z, ix, iy, iz, gx0, gx1, gy0, gy1, gz0, gz1, &
-    !$ACC& gamma_rel, igamma, vx, vy, vz, wx, wy, wz, jx_contrib, jy_contrib, jz_contrib)
+    !$ACC& PRIVATE(cell_x_old, cell_y_old, cell_z_old, cell_x_new, cell_y_new, cell_z_new) &
+    !$ACC& PRIVATE(ix_old, iy_old, iz_old, ix_new, iy_new, iz_new) &
+    !$ACC& PRIVATE(ix_base, iy_base, iz_base, dcellx, dcelly, dcellz) &
+    !$ACC& PRIVATE(frac_x_old, frac_y_old, frac_z_old, frac_x_new, frac_y_new, frac_z_new) &
+    !$ACC& PRIVATE(wx_old, wy_old, wz_old, wx_new, wy_new, wz_new, dwx, dwy, dwz) &
+    !$ACC& PRIVATE(qw_idt, jx_accum, jy_accum, jz_accum)
     DO ip = 1, n_particles
-      ! Compute velocity
-      gamma_rel = SQRT((px(ip)*ipart_mc)**2 + (py(ip)*ipart_mc)**2 + &
-                       (pz(ip)*ipart_mc)**2 + 1.0_num)
-      igamma = 1.0_num / gamma_rel
-      vx = px(ip) * ipart_mc * igamma * c
-      vy = py(ip) * ipart_mc * igamma * c
-      vz = pz(ip) * ipart_mc * igamma * c
+      ! Cell coordinates at old and new positions
+      cell_x_old = (pos_x_old(ip) - x_min) * idx
+      cell_y_old = (pos_y_old(ip) - y_min) * idy
+      cell_z_old = (pos_z_old(ip) - z_min) * idz
+      cell_x_new = (pos_x_new(ip) - x_min) * idx
+      cell_y_new = (pos_y_new(ip) - y_min) * idy
+      cell_z_new = (pos_z_new(ip) - z_min) * idz
       
-      ! Compute cell indices
-      cell_x = (pos_x(ip) - x_min) * idx
-      cell_y = (pos_y(ip) - y_min) * idy
-      cell_z = (pos_z(ip) - z_min) * idz
+      ! Cell indices
+      ix_old = FLOOR(cell_x_old)
+      iy_old = FLOOR(cell_y_old)
+      iz_old = FLOOR(cell_z_old)
+      ix_new = FLOOR(cell_x_new)
+      iy_new = FLOOR(cell_y_new)
+      iz_new = FLOOR(cell_z_new)
       
-      ix = INT(cell_x)
-      iy = INT(cell_y)
-      iz = INT(cell_z)
+      ! Fractional positions
+      frac_x_old = cell_x_old - REAL(ix_old, num)
+      frac_y_old = cell_y_old - REAL(iy_old, num)
+      frac_z_old = cell_z_old - REAL(iz_old, num)
+      frac_x_new = cell_x_new - REAL(ix_new, num)
+      frac_y_new = cell_y_new - REAL(iy_new, num)
+      frac_z_new = cell_z_new - REAL(iz_new, num)
       
-      gx1 = cell_x - REAL(ix, num)
-      gy1 = cell_y - REAL(iy, num)
-      gz1 = cell_z - REAL(iz, num)
-      gx0 = 1.0_num - gx1
-      gy0 = 1.0_num - gy1
-      gz0 = 1.0_num - gz1
+      ! Cell displacement
+      dcellx = ix_new - ix_old
+      dcelly = iy_new - iy_old
+      dcellz = iz_new - iz_old
       
-      ix = MAX(1, MIN(ix, nx-1))
-      iy = MAX(1, MIN(iy, ny-1))
-      iz = MAX(1, MIN(iz, nz-1))
+      ! Use old cell as reference
+      ix_base = MAX(1, MIN(ix_old, nx-1))
+      iy_base = MAX(1, MIN(iy_old, ny-1))
+      iz_base = MAX(1, MIN(iz_old, nz-1))
       
-      wx(0) = gx0; wx(1) = gx1
-      wy(0) = gy0; wy(1) = gy1
-      wz(0) = gz0; wz(1) = gz1
+      ! First-order shape functions at old position
+      wx_old(-1) = 0.0_num; wx_old(0) = 1.0_num - frac_x_old; wx_old(1) = frac_x_old
+      wy_old(-1) = 0.0_num; wy_old(0) = 1.0_num - frac_y_old; wy_old(1) = frac_y_old
+      wz_old(-1) = 0.0_num; wz_old(0) = 1.0_num - frac_z_old; wz_old(1) = frac_z_old
       
-      ! Deposit current with atomics
-      DO k = 0, 1
-        DO j = 0, 1
-          DO i = 0, 1
-            jx_contrib = weight(ip) * vx * wx(i) * wy(j) * wz(k) * factor
-            jy_contrib = weight(ip) * vy * wx(i) * wy(j) * wz(k) * factor
-            jz_contrib = weight(ip) * vz * wx(i) * wy(j) * wz(k) * factor
-            
+      ! Shape functions at new position (shifted by dcell)
+      wx_new = 0.0_num; wy_new = 0.0_num; wz_new = 0.0_num
+      IF (dcellx >= -1 .AND. dcellx <= 1) THEN
+        wx_new(dcellx) = 1.0_num - frac_x_new
+        wx_new(dcellx+1) = frac_x_new
+      ELSE
+        wx_new(0) = 1.0_num - frac_x_new
+        wx_new(1) = frac_x_new
+      END IF
+      IF (dcelly >= -1 .AND. dcelly <= 1) THEN
+        wy_new(dcelly) = 1.0_num - frac_y_new
+        wy_new(dcelly+1) = frac_y_new
+      ELSE
+        wy_new(0) = 1.0_num - frac_y_new
+        wy_new(1) = frac_y_new
+      END IF
+      IF (dcellz >= -1 .AND. dcellz <= 1) THEN
+        wz_new(dcellz) = 1.0_num - frac_z_new
+        wz_new(dcellz+1) = frac_z_new
+      ELSE
+        wz_new(0) = 1.0_num - frac_z_new
+        wz_new(1) = frac_z_new
+      END IF
+      
+      ! Shape function differences
+      dwx(-1) = wx_new(-1) - wx_old(-1)
+      dwx(0) = wx_new(0) - wx_old(0)
+      dwx(1) = wx_new(1) - wx_old(1)
+      dwy(-1) = wy_new(-1) - wy_old(-1)
+      dwy(0) = wy_new(0) - wy_old(0)
+      dwy(1) = wy_new(1) - wy_old(1)
+      dwz(-1) = wz_new(-1) - wz_old(-1)
+      dwz(0) = wz_new(0) - wz_old(0)
+      dwz(1) = wz_new(1) - wz_old(1)
+      
+      ! Current factor
+      qw_idt = charge * weight(ip) * idt
+      
+      ! Esirkepov Jx deposition
+      DO iz = -1, 1
+        IF (iz_base + iz < 1 - ng .OR. iz_base + iz > nz + ng) CYCLE
+        DO iy = -1, 1
+          IF (iy_base + iy < 1 - ng .OR. iy_base + iy > ny + ng) CYCLE
+          jx_accum = 0.0_num
+          DO ix = -1, 1
+            IF (ix_base + ix < 1 - ng .OR. ix_base + ix > nx + ng) CYCLE
+            jx_accum = jx_accum - qw_idt * dwx(ix) * &
+                       (wy_old(iy) + 0.5_num * dwy(iy)) * &
+                       (wz_old(iz) + 0.5_num * dwz(iz))
             !$ACC ATOMIC UPDATE
-            jx(ix+i, iy+j, iz+k) = jx(ix+i, iy+j, iz+k) + jx_contrib
+            jx(ix_base+ix, iy_base+iy, iz_base+iz) = &
+                jx(ix_base+ix, iy_base+iy, iz_base+iz) + jx_accum
+          END DO
+        END DO
+      END DO
+      
+      ! Esirkepov Jy deposition
+      DO iz = -1, 1
+        IF (iz_base + iz < 1 - ng .OR. iz_base + iz > nz + ng) CYCLE
+        DO ix = -1, 1
+          IF (ix_base + ix < 1 - ng .OR. ix_base + ix > nx + ng) CYCLE
+          jy_accum = 0.0_num
+          DO iy = -1, 1
+            IF (iy_base + iy < 1 - ng .OR. iy_base + iy > ny + ng) CYCLE
+            jy_accum = jy_accum - qw_idt * dwy(iy) * &
+                       (wx_old(ix) + 0.5_num * dwx(ix)) * &
+                       (wz_old(iz) + 0.5_num * dwz(iz))
             !$ACC ATOMIC UPDATE
-            jy(ix+i, iy+j, iz+k) = jy(ix+i, iy+j, iz+k) + jy_contrib
+            jy(ix_base+ix, iy_base+iy, iz_base+iz) = &
+                jy(ix_base+ix, iy_base+iy, iz_base+iz) + jy_accum
+          END DO
+        END DO
+      END DO
+      
+      ! Esirkepov Jz deposition
+      DO iy = -1, 1
+        IF (iy_base + iy < 1 - ng .OR. iy_base + iy > ny + ng) CYCLE
+        DO ix = -1, 1
+          IF (ix_base + ix < 1 - ng .OR. ix_base + ix > nx + ng) CYCLE
+          jz_accum = 0.0_num
+          DO iz = -1, 1
+            IF (iz_base + iz < 1 - ng .OR. iz_base + iz > nz + ng) CYCLE
+            jz_accum = jz_accum - qw_idt * dwz(iz) * &
+                       (wx_old(ix) + 0.5_num * dwx(ix)) * &
+                       (wy_old(iy) + 0.5_num * dwy(iy))
             !$ACC ATOMIC UPDATE
-            jz(ix+i, iy+j, iz+k) = jz(ix+i, iy+j, iz+k) + jz_contrib
+            jz(ix_base+ix, iy_base+iy, iz_base+iz) = &
+                jz(ix_base+ix, iy_base+iy, iz_base+iz) + jz_accum
           END DO
         END DO
       END DO

@@ -305,10 +305,11 @@ CONTAINS
     REAL(num), INTENT(INOUT) :: jx(:,:), jy(:,:), jz(:,:)
     
     INTEGER :: ispecies
-    INTEGER(i8) :: np
+    INTEGER(i8) :: np, ip
     REAL(num), ALLOCATABLE :: ex_p(:), ey_p(:), ez_p(:)
     REAL(num), ALLOCATABLE :: bx_p(:), by_p(:), bz_p(:)
-    REAL(num) :: charge, mass, weight_val
+    REAL(num), ALLOCATABLE :: pos_x_old(:), pos_y_old(:)  ! For Esirkepov method
+    REAL(num) :: charge, mass
     
     ! Transfer field and current arrays to GPU
     !$ACC ENTER DATA COPYIN(ex, ey, ez, bx, by, bz)
@@ -319,15 +320,24 @@ CONTAINS
       IF (np <= 0) CYCLE
       
       ! Convert from EPOCH normalized units to SI units
-      ! In EPOCH: species%charge is in units of q0, species%mass in units of m0
       charge = species_list(ispecies)%charge * q0
       mass = species_list(ispecies)%mass * m0
-      weight_val = species_list(ispecies)%weight
       
-      ! Allocate temporary arrays for interpolated fields
+      ! Allocate temporary arrays
       ALLOCATE(ex_p(np), ey_p(np), ez_p(np))
       ALLOCATE(bx_p(np), by_p(np), bz_p(np))
+      ALLOCATE(pos_x_old(np), pos_y_old(np))
       
+      ! Save old positions BEFORE push (for Esirkepov charge-conserving method)
+      !$ACC UPDATE HOST(species_soa(ispecies)%pos_x(1:np))
+      !$ACC UPDATE HOST(species_soa(ispecies)%pos_y(1:np))
+      DO ip = 1, np
+        pos_x_old(ip) = species_soa(ispecies)%pos_x(ip)
+        pos_y_old(ip) = species_soa(ispecies)%pos_y(ip)
+      END DO
+      
+      ! Transfer old positions and temporary arrays to GPU
+      !$ACC ENTER DATA COPYIN(pos_x_old, pos_y_old)
       !$ACC ENTER DATA CREATE(ex_p, ey_p, ez_p, bx_p, by_p, bz_p)
       
       ! Interpolate fields to particle positions
@@ -339,7 +349,7 @@ CONTAINS
                                                bx_p, by_p, bz_p, &
                                                x_min, y_min, dx, dy, nx, ny, ng)
       
-      ! Push particles using Boris algorithm
+      ! Push particles using Boris algorithm (updates positions to new)
       CALL push_particles_gpu(np, &
                               species_soa(ispecies)%pos_x, &
                               species_soa(ispecies)%pos_y, &
@@ -349,23 +359,27 @@ CONTAINS
                               ex_p, ey_p, ez_p, bx_p, by_p, bz_p, &
                               charge, mass, dt)
       
-      ! Deposit current (velocity-based method)
+      ! Deposit current using Esirkepov charge-conserving method
       CALL deposit_current_gpu(np, &
+                               pos_x_old, pos_y_old, &
                                species_soa(ispecies)%pos_x, &
                                species_soa(ispecies)%pos_y, &
                                species_soa(ispecies)%px, &
                                species_soa(ispecies)%py, &
                                species_soa(ispecies)%pz, &
-                               weight_val, charge, mass, &
+                               species_soa(ispecies)%weight, &
+                               charge, mass, &
                                jx, jy, jz, &
-                               x_min, y_min, dx, dy, nx, ny, ng)
+                               x_min, y_min, dx, dy, dt, nx, ny, ng)
       
       ! Clean up temporary arrays on GPU
       !$ACC EXIT DATA DELETE(ex_p, ey_p, ez_p, bx_p, by_p, bz_p)
+      !$ACC EXIT DATA DELETE(pos_x_old, pos_y_old)
       
       ! Deallocate CPU arrays
       DEALLOCATE(ex_p, ey_p, ez_p)
       DEALLOCATE(bx_p, by_p, bz_p)
+      DEALLOCATE(pos_x_old, pos_y_old)
     END DO
     
     ! Sync current back to CPU for field update
