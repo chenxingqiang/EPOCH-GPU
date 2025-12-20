@@ -180,22 +180,24 @@ cleanall: clean
 	$(MAKE) -C $(SDF) cleanall
 
 #---------------------------------------------------------------------------
-# GPU module dependencies
-#---------------------------------------------------------------------------
-
-gpu_config.o: gpu_config.F90
-particle_data_gpu.o: particle_data_gpu.F90 gpu_config.o
-fields_gpu.o: fields_gpu.F90 gpu_config.o
-particles_gpu.o: particles_gpu.F90 gpu_config.o
-particle_converter.o: particle_converter.F90 shared_data.o particle_data_gpu.o
-epoch_gpu_interface.o: epoch_gpu_interface.F90 gpu_config.o fields_gpu.o particles_gpu.o particle_data_gpu.o particle_converter.o
-
-#---------------------------------------------------------------------------
-# Main code dependencies (subset - GPU modules first)
+# Main code dependencies (must come first for GPU modules that need shared_data)
 #---------------------------------------------------------------------------
 
 constants.o: constants.F90 $(SDFMOD)
 shared_data.o: shared_data.F90 constants.o $(SDFMOD)
+
+#---------------------------------------------------------------------------
+# GPU module dependencies
+#---------------------------------------------------------------------------
+
+gpu_config.o: gpu_config.F90 constants.o
+particle_data_gpu.o: particle_data_gpu.F90 gpu_config.o
+fields_gpu.o: fields_gpu.F90 gpu_config.o
+particles_gpu.o: particles_gpu.F90 gpu_config.o
+# particle_converter needs shared_data for particle/species types
+particle_converter.o: particle_converter.F90 shared_data.o particle_data_gpu.o
+# epoch_gpu_interface is the integration layer
+epoch_gpu_interface.o: epoch_gpu_interface.F90 gpu_config.o fields_gpu.o particles_gpu.o particle_data_gpu.o particle_converter.o shared_data.o
 boundary.o: boundary.F90 shared_data.o
 fields.o: fields.f90 boundary.o
 particles.o: particles.F90 boundary.o
