@@ -9,7 +9,11 @@
 !> @date December 2024
 
 MODULE particle_converter
-
+  !> @brief Particle data structure converter between CPU (AoS) and GPU (SoA)
+  !>
+  !> NOTE: This module requires shared_data.mod which is only available
+  !> when compiled as part of the full EPOCH build.
+  
   USE shared_data
   USE particle_data_gpu
 
