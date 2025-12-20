@@ -304,7 +304,7 @@ CONTAINS
     REAL(num), INTENT(INOUT) :: jx(:,:), jy(:,:), jz(:,:)
     
     INTEGER :: ispecies
-    INTEGER(i8) :: np
+    INTEGER(i8) :: np, ip
     REAL(num), ALLOCATABLE :: ex_p(:), ey_p(:), ez_p(:)
     REAL(num), ALLOCATABLE :: bx_p(:), by_p(:), bz_p(:)
     REAL(num), ALLOCATABLE :: pos_x_old(:), pos_y_old(:)
@@ -323,12 +323,18 @@ CONTAINS
       ALLOCATE(bx_p(np), by_p(np), bz_p(np))
       ALLOCATE(pos_x_old(np), pos_y_old(np))
       
-      ! Save old positions for current deposition
-      pos_x_old = species_soa(ispecies)%pos_x(1:np)
-      pos_y_old = species_soa(ispecies)%pos_y(1:np)
-      
       !$ACC ENTER DATA CREATE(ex_p, ey_p, ez_p, bx_p, by_p, bz_p)
-      !$ACC ENTER DATA COPYIN(pos_x_old, pos_y_old)
+      !$ACC ENTER DATA CREATE(pos_x_old, pos_y_old)
+      
+      ! Save old positions ON GPU before particle push
+      ! (species_soa arrays are already on GPU from sync_species_to_gpu)
+      !$ACC PARALLEL LOOP PRESENT(pos_x_old, pos_y_old) &
+      !$ACC   PRESENT(species_soa(ispecies)%pos_x, species_soa(ispecies)%pos_y)
+      DO ip = 1, np
+        pos_x_old(ip) = species_soa(ispecies)%pos_x(ip)
+        pos_y_old(ip) = species_soa(ispecies)%pos_y(ip)
+      END DO
+      !$ACC END PARALLEL LOOP
       
       ! Interpolate fields to particle positions
       CALL interpolate_fields_to_particles_gpu(np, &
@@ -361,9 +367,11 @@ CONTAINS
                                jx, jy, jz, &
                                x_min, y_min, dx, dy, dt, nx, ny, ng)
       
-      ! Clean up temporary arrays
+      ! Clean up temporary arrays on GPU
       !$ACC EXIT DATA DELETE(ex_p, ey_p, ez_p, bx_p, by_p, bz_p)
       !$ACC EXIT DATA DELETE(pos_x_old, pos_y_old)
+      
+      ! Deallocate CPU arrays
       DEALLOCATE(ex_p, ey_p, ez_p)
       DEALLOCATE(bx_p, by_p, bz_p)
       DEALLOCATE(pos_x_old, pos_y_old)
