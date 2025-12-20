@@ -147,7 +147,7 @@ CONTAINS
                                species_soa(ispecies)%pz, &
                                species_soa(ispecies)%weight, &
                                jx, jy, jz, &
-                               nx, ng, x_min, dx, mass)
+                               nx, ng, x_min, dx, mass, charge)
       
       ! Clean up temporary arrays on GPU
       !$ACC EXIT DATA DELETE(ex_p, ey_p, ez_p, bx_p, by_p, bz_p)

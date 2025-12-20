@@ -184,7 +184,7 @@ CONTAINS
   !> @brief Deposit current to grid (1D, 1st order with atomics)
   !---------------------------------------------------------------------------
   SUBROUTINE deposit_current_gpu_1d(n_particles, pos_x, px, py, pz, weight, &
-                                     jx, jy, jz, nx, ng, x_min, dx, mass)
+                                     jx, jy, jz, nx, ng, x_min, dx, mass, charge)
     INTEGER(i8), INTENT(IN) :: n_particles
     REAL(num), INTENT(IN) :: pos_x(:)
     REAL(num), INTENT(IN) :: px(:), py(:), pz(:)
@@ -193,7 +193,7 @@ CONTAINS
     REAL(num), INTENT(INOUT) :: jy(1-ng:nx+ng)
     REAL(num), INTENT(INOUT) :: jz(1-ng:nx+ng)
     INTEGER, INTENT(IN) :: nx, ng
-    REAL(num), INTENT(IN) :: x_min, dx, mass
+    REAL(num), INTENT(IN) :: x_min, dx, mass, charge
     
     INTEGER(i8) :: ip
     INTEGER :: ix
@@ -207,7 +207,8 @@ CONTAINS
     idx = 1.0_num / dx
     part_mc = c * mass
     ipart_mc = 1.0_num / part_mc
-    factor = 1.0_num / dx
+    ! Current = charge * weight * velocity / cell_volume
+    factor = charge / dx
     
     !$ACC PARALLEL LOOP &
     !$ACC& PRESENT(pos_x(1:n_particles), px(1:n_particles), py(1:n_particles), pz(1:n_particles)) &
