@@ -316,6 +316,12 @@ PROGRAM pic
       IF (use_particle_migration) CALL migrate_particles(step)
       IF (use_field_ionisation) CALL ionise_particles
       CALL current_finish
+      
+      ! DEBUG: jx after current_finish
+      IF (step <= 3 .AND. rank == 0) THEN
+        PRINT*, 'AFTER current_finish step', step, ': jx max=', MAXVAL(ABS(jx))
+      END IF
+      
       CALL update_particle_count
     END IF
 
