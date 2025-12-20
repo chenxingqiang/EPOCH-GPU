@@ -75,7 +75,8 @@ FULLTARGET = $(BINDIR)/$(TARGET)
 # GPU Source files
 #---------------------------------------------------------------------------
 
-GPU_SRCFILES = gpu_config.F90 particle_data_gpu.F90 fields_gpu.F90 particles_gpu.F90 epoch_gpu_interface.F90
+GPU_SRCFILES = gpu_config.F90 particle_data_gpu.F90 fields_gpu.F90 particles_gpu.F90 \
+  particle_converter.F90 epoch_gpu_interface.F90
 
 #---------------------------------------------------------------------------
 # Main source files (same as CPU version)
@@ -185,7 +186,8 @@ gpu_config.o: gpu_config.F90
 particle_data_gpu.o: particle_data_gpu.F90 gpu_config.o
 fields_gpu.o: fields_gpu.F90 gpu_config.o
 particles_gpu.o: particles_gpu.F90 gpu_config.o
-epoch_gpu_interface.o: epoch_gpu_interface.F90 gpu_config.o fields_gpu.o particles_gpu.o particle_data_gpu.o
+particle_converter.o: particle_converter.F90 shared_data.o particle_data_gpu.o
+epoch_gpu_interface.o: epoch_gpu_interface.F90 gpu_config.o fields_gpu.o particles_gpu.o particle_data_gpu.o particle_converter.o
 
 #---------------------------------------------------------------------------
 # Main code dependencies (subset - GPU modules first)
