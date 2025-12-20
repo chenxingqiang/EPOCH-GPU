@@ -265,10 +265,10 @@ CONTAINS
     !$ACC UPDATE HOST(soa%pz(1:soa%count))
     !$ACC UPDATE HOST(soa%weight(1:soa%count))
     
-    ! Free GPU memory
-    !$ACC EXIT DATA DELETE(soa%pos_x)
-    !$ACC EXIT DATA DELETE(soa%px, soa%py, soa%pz)
-    !$ACC EXIT DATA DELETE(soa%weight)
+    ! Free GPU memory (must match the slices used in ENTER DATA)
+    !$ACC EXIT DATA DELETE(soa%pos_x(1:soa%count))
+    !$ACC EXIT DATA DELETE(soa%px(1:soa%count), soa%py(1:soa%count), soa%pz(1:soa%count))
+    !$ACC EXIT DATA DELETE(soa%weight(1:soa%count))
 #endif
     
     ! Convert back to AoS format
