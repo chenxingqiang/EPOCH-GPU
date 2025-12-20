@@ -372,9 +372,9 @@ CONTAINS
       dcellx = ix_new - ix_old
       dcelly = iy_new - iy_old
       
-      ! Use old cell as reference
-      ix_base = MAX(1, MIN(ix_old, nx-1))
-      iy_base = MAX(1, MIN(iy_old, ny-1))
+      ! Use old cell as reference (EPOCH grid is 0-indexed)
+      ix_base = MAX(0, MIN(ix_old, nx-1))
+      iy_base = MAX(0, MIN(iy_old, ny-1))
       
       ! First-order shape functions at old position
       wx_old = 0.0_num
