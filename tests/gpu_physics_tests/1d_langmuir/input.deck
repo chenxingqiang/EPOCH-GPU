@@ -1,0 +1,77 @@
+begin:control
+  # 1D Langmuir Wave Test
+  # This tests the basic plasma oscillation physics
+  
+  nx = 128
+  
+  # Run for 5 plasma periods
+  t_end = 5.0e-12
+  
+  # Domain size (1 wavelength)
+  x_min = 0.0
+  x_max = 1.0e-5
+  
+  stdout_frequency = 100
+end:control
+
+
+begin:boundaries
+  bc_x_min = periodic
+  bc_x_max = periodic
+end:boundaries
+
+
+begin:constant
+  # Plasma parameters
+  n0 = 1.0e25        # Electron density (m^-3)
+  Te = 100.0         # Electron temperature (eV)
+  perturbation = 0.01 # 1% density perturbation
+  
+  # Derived quantities
+  omega_p = sqrt(n0 * qe^2 / (me * epsilon0))
+  lambda_D = sqrt(epsilon0 * kb * Te / (n0 * qe^2))
+end:constant
+
+
+begin:species
+  name = electron
+  charge = -1.0
+  mass = 1.0
+  
+  # Perturbed density profile for Langmuir wave
+  number_density = n0 * (1.0 + perturbation * sin(2.0 * pi * x / (x_max - x_min)))
+  
+  temperature_ev = Te
+  
+  nparticles_per_cell = 100
+end:species
+
+
+begin:output
+  name = langmuir
+  
+  dt_snapshot = 1.0e-13
+  
+  grid = always
+  ex = always
+  ey = always
+  ez = always
+  
+  number_density = always + species
+  
+  # Energy diagnostics
+  total_energy_sum = always
+  field_energy = always
+  particle_energy = always
+end:output
+
+
+begin:output
+  name = full
+  
+  dt_snapshot = 1.0e-12
+  
+  particles = always
+  px = always
+end:output
+

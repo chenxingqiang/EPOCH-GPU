@@ -1,0 +1,78 @@
+begin:control
+  # 3D Plasma Oscillation Test
+  # Minimal 3D test for GPU validation
+  
+  nx = 32
+  ny = 32
+  nz = 32
+  
+  t_end = 1.0e-12
+  
+  x_min = 0.0
+  x_max = 5.0e-6
+  y_min = 0.0
+  y_max = 5.0e-6
+  z_min = 0.0
+  z_max = 5.0e-6
+  
+  stdout_frequency = 20
+end:control
+
+
+begin:boundaries
+  bc_x_min = periodic
+  bc_x_max = periodic
+  bc_y_min = periodic
+  bc_y_max = periodic
+  bc_z_min = periodic
+  bc_z_max = periodic
+end:boundaries
+
+
+begin:constant
+  n0 = 1.0e24
+  Te = 10.0
+  perturbation = 0.02
+end:constant
+
+
+begin:species
+  name = electron
+  charge = -1.0
+  mass = 1.0
+  
+  # 3D density perturbation
+  number_density = n0 * (1.0 + perturbation * sin(2.0 * pi * x / (x_max - x_min)))
+  
+  temperature_ev = Te
+  
+  nparticles_per_cell = 8
+end:species
+
+
+begin:species
+  name = ion
+  charge = 1.0
+  mass = 1836.0
+  
+  number_density = n0
+  temperature_ev = Te / 100.0
+  
+  nparticles_per_cell = 2
+end:species
+
+
+begin:output
+  name = plasma3d
+  
+  dt_snapshot = 2.0e-13
+  
+  grid = always
+  ex = always
+  
+  number_density = always + species
+  
+  total_energy_sum = always
+  field_energy = always
+end:output
+

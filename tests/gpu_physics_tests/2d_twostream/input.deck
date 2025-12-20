@@ -1,0 +1,94 @@
+begin:control
+  # 2D Two-Stream Instability Test
+  # Classic plasma physics benchmark
+  
+  nx = 64
+  ny = 64
+  
+  # Run for instability growth
+  t_end = 2.0e-12
+  
+  x_min = 0.0
+  x_max = 1.0e-5
+  y_min = 0.0
+  y_max = 1.0e-5
+  
+  stdout_frequency = 50
+end:control
+
+
+begin:boundaries
+  bc_x_min = periodic
+  bc_x_max = periodic
+  bc_y_min = periodic
+  bc_y_max = periodic
+end:boundaries
+
+
+begin:constant
+  n0 = 1.0e24       # Background density
+  Te = 10.0         # Temperature in eV
+  v_beam = 1.0e7    # Beam velocity (m/s)
+end:constant
+
+
+begin:species
+  name = beam_right
+  charge = -1.0
+  mass = 1.0
+  
+  number_density = n0 / 2.0
+  temperature_ev = Te
+  
+  drift_x = v_beam
+  
+  nparticles_per_cell = 25
+end:species
+
+
+begin:species
+  name = beam_left
+  charge = -1.0
+  mass = 1.0
+  
+  number_density = n0 / 2.0
+  temperature_ev = Te
+  
+  drift_x = -v_beam
+  
+  nparticles_per_cell = 25
+end:species
+
+
+begin:species
+  name = ion
+  charge = 1.0
+  mass = 1836.0
+  
+  number_density = n0
+  temperature_ev = Te / 100.0
+  
+  nparticles_per_cell = 10
+end:species
+
+
+begin:output
+  name = twostream
+  
+  dt_snapshot = 2.0e-13
+  
+  grid = always
+  ex = always
+  ey = always
+  ez = always
+  bx = always
+  by = always
+  bz = always
+  
+  number_density = always + species
+  
+  total_energy_sum = always
+  field_energy = always
+  particle_energy = always
+end:output
+
