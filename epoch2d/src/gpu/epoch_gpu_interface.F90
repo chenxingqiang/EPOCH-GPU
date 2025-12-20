@@ -292,6 +292,7 @@ CONTAINS
                                   nx, ny, dt, dx, dy)
 #ifdef GPU_ENABLED
     USE shared_data, ONLY: particle_species, x_min, y_min, ng
+    USE constants, ONLY: q0, m0
 #endif
     
     INTEGER, INTENT(IN) :: n_species, nx, ny
@@ -317,8 +318,10 @@ CONTAINS
       np = species_soa(ispecies)%count
       IF (np <= 0) CYCLE
       
-      charge = species_list(ispecies)%charge
-      mass = species_list(ispecies)%mass
+      ! Convert from EPOCH normalized units to SI units
+      ! In EPOCH: species%charge is in units of q0, species%mass in units of m0
+      charge = species_list(ispecies)%charge * q0
+      mass = species_list(ispecies)%mass * m0
       weight_val = species_list(ispecies)%weight
       
       ! Allocate temporary arrays for interpolated fields
