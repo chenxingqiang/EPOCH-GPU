@@ -382,9 +382,6 @@ CONTAINS
     ! Sync current back to CPU for field update
     !$ACC UPDATE HOST(jx, jy, jz)
     
-    ! DEBUG
-    PRINT*, '2D GPU: jx max=', MAXVAL(ABS(jx)), ' jy max=', MAXVAL(ABS(jy))
-    
     ! Clean up field arrays from GPU
     !$ACC EXIT DATA DELETE(ex, ey, ez, bx, by, bz)
     !$ACC EXIT DATA DELETE(jx, jy, jz)

@@ -416,12 +416,6 @@ CONTAINS
       qw_idt = charge * weight(ip) * idt  ! For Jx, Jy (charge conservation)
       qw_idxy = charge * weight(ip) * idx * idy  ! For Jz (velocity-based)
       
-      ! DEBUG
-      IF (ip == 1) THEN
-        PRINT*, '2D DEBUG: charge=', charge, ' weight=', weight(ip), ' qw_idt=', qw_idt
-        PRINT*, '2D DEBUG: dwx=', dwx(0), dwx(1), ' dwy=', dwy(0), dwy(1)
-      END IF
-      
       ! Esirkepov Jx deposition (cumulative in x)
       DO iy = -1, 2
         IF (iy_base + iy < 1 - ng .OR. iy_base + iy > ny + ng) CYCLE
