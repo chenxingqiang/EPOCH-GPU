@@ -52,13 +52,76 @@ make -f Makefile.gpu GPU_CC=cc70
 
 Set `GPU_CC` according to your GPU:
 
-| GPU | Compute Capability | Flag |
-|-----|-------------------|------|
-| Tesla V100 | 7.0 | `GPU_CC=cc70` |
-| Tesla A100 | 8.0 | `GPU_CC=cc80` |
-| Tesla H100 | 9.0 | `GPU_CC=cc90` |
-| RTX 3090 | 8.6 | `GPU_CC=cc86` |
-| RTX 4090 | 8.9 | `GPU_CC=cc89` |
+### Data Center GPUs
+
+| GPU | Compute Capability | Flag | Notes |
+|-----|-------------------|------|-------|
+| Tesla V100 | 7.0 | `GPU_CC=cc70` | Verified, excellent performance |
+| Tesla A100 | 8.0 | `GPU_CC=cc80` | Large memory, fast interconnect |
+| Tesla H100 | 9.0 | `GPU_CC=cc90` | Latest architecture |
+| L40/L40S | 8.9 | `GPU_CC=cc89` | Ada Lovelace, 48GB |
+
+### Professional GPUs (Workstation)
+
+| GPU | Compute Capability | Flag | Notes |
+|-----|-------------------|------|-------|
+| **RTX 6000 Ada** | 8.9 | `GPU_CC=cc89` | Latest flagship, 48GB ECC |
+| **RTX A6000** | 8.6 | `GPU_CC=cc86` | Previous gen, 48GB ECC |
+| RTX A5000 | 8.6 | `GPU_CC=cc86` | 24GB, mid-range professional |
+| RTX A4000 | 8.6 | `GPU_CC=cc86` | 16GB, entry professional |
+| Quadro RTX 8000 | 7.5 | `GPU_CC=cc75` | Legacy, 48GB |
+
+### Consumer GPUs (GeForce)
+
+| GPU | Compute Capability | Flag | Notes |
+|-----|-------------------|------|-------|
+| **RTX 4090** | 8.9 | `GPU_CC=cc89` | Best consumer, 24GB |
+| RTX 4080 | 8.9 | `GPU_CC=cc89` | 16GB |
+| RTX 4070 Ti | 8.9 | `GPU_CC=cc89` | 12GB |
+| RTX 3090/3090 Ti | 8.6 | `GPU_CC=cc86` | 24GB, good value |
+| RTX 3080/3080 Ti | 8.6 | `GPU_CC=cc86` | 10-12GB |
+| RTX 2080 Ti | 7.5 | `GPU_CC=cc75` | 11GB, minimum recommended |
+
+### Quick Reference by Architecture
+
+```bash
+# Volta (Compute Capability 7.0)
+make -f Makefile.gpu GPU_CC=cc70   # V100
+
+# Turing (Compute Capability 7.5)
+make -f Makefile.gpu GPU_CC=cc75   # RTX 2080 Ti, Quadro RTX
+
+# Ampere (Compute Capability 8.0/8.6)
+make -f Makefile.gpu GPU_CC=cc80   # A100
+make -f Makefile.gpu GPU_CC=cc86   # RTX 3090, RTX A6000
+
+# Ada Lovelace (Compute Capability 8.9)
+make -f Makefile.gpu GPU_CC=cc89   # RTX 4090, RTX 6000 Ada
+
+# Hopper (Compute Capability 9.0)
+make -f Makefile.gpu GPU_CC=cc90   # H100
+```
+
+### Auto-Detect GPU and Build
+
+```bash
+#!/bin/bash
+# auto_build.sh - Automatically detect GPU and build
+
+# Get compute capability
+CC=$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader | head -1 | tr -d '.')
+
+if [ -z "$CC" ]; then
+    echo "No NVIDIA GPU detected!"
+    exit 1
+fi
+
+GPU_NAME=$(nvidia-smi --query-gpu=name --format=csv,noheader | head -1)
+echo "Detected GPU: $GPU_NAME (cc$CC)"
+
+# Build
+make -f Makefile.gpu GPU_CC=cc$CC -j$(nproc)
+```
 
 ## Build Options
 

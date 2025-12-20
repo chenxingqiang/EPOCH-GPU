@@ -28,10 +28,172 @@ EPOCH-GPU requires NVIDIA GPUs with **Compute Capability 7.0 or higher**:
 | RTX 2080 Ti | 7.5 | 11 GB | Turing | Development |
 | RTX 3080/3090 | 8.6 | 10/24 GB | Ampere | Development/testing |
 | RTX 4080/4090 | 8.9 | 16/24 GB | Ada Lovelace | Development/testing |
-| A6000 | 8.6 | 48 GB | Ampere | Production |
+| **RTX 6000 Ada** | 8.9 | 48 GB ECC | Ada Lovelace | **Professional flagship** |
+| **RTX A6000** | 8.6 | 48 GB ECC | Ampere | Professional production |
 | L40/L40S | 8.9 | 48 GB | Ada Lovelace | Production |
 
 > **Note**: GPUs with Compute Capability < 7.0 (e.g., GTX 1080, P100) are NOT supported.
+
+### Professional vs Consumer GPUs Comparison
+
+| Feature | RTX 6000 Ada | RTX A6000 | GeForce RTX 4090 |
+|---------|--------------|-----------|------------------|
+| **Architecture** | Ada Lovelace | Ampere | Ada Lovelace |
+| **Memory** | 48GB GDDR6 ECC | 48GB GDDR6 ECC | 24GB GDDR6X |
+| **Compute Capability** | 8.9 | 8.6 | 8.9 |
+| **ECC Memory** | ✅ Yes | ✅ Yes | ❌ No |
+| **ISV Certification** | ✅ Yes | ✅ Yes | ❌ No |
+| **Max Power** | 300W | 300W | 450W |
+| **Price Range** | ¥60,000-100,000 | ¥30,000-50,000 | ¥13,000-15,000 |
+| **Best For** | Mission-critical production | Large memory production | Development/Gaming |
+
+### Choosing the Right GPU
+
+#### RTX 6000 Ada (Professional Flagship)
+
+**Best for**: Mission-critical simulations, enterprise environments, ISV-certified workflows
+
+```bash
+# Build for RTX 6000 Ada
+make -f Makefile.gpu GPU_CC=cc89
+
+# Key advantages:
+# - 48GB ECC memory for error-free large simulations
+# - ISV-certified drivers for professional applications
+# - Best-in-class ray tracing and AI compute
+# - Optimized power efficiency (300W TDP)
+```
+
+**Recommended configurations**:
+- Large 3D simulations: 256³ grid, 100M+ particles
+- Long-running production jobs requiring stability
+- Multi-GPU workstations (NVLink support)
+
+#### RTX A6000 (Previous Gen Professional)
+
+**Best for**: Large memory professional workloads, cost-effective production
+
+```bash
+# Build for RTX A6000
+make -f Makefile.gpu GPU_CC=cc86
+
+# Key advantages:
+# - 48GB ECC memory (same as RTX 6000 Ada)
+# - Lower price than Ada generation
+# - Proven reliability for production workloads
+# - Good availability in cloud platforms
+```
+
+**Recommended configurations**:
+- Memory-intensive simulations
+- Budget-conscious professional deployments
+- Upgrade path from older Quadro cards
+
+#### GeForce RTX 4090 (Consumer Flagship)
+
+**Best for**: Development, testing, cost-effective high performance
+
+```bash
+# Build for RTX 4090
+make -f Makefile.gpu GPU_CC=cc89
+
+# Key advantages:
+# - Excellent price/performance ratio
+# - Same Ada architecture as RTX 6000
+# - 24GB is sufficient for most simulations
+# - Wide availability and community support
+```
+
+**Recommended configurations**:
+- Development and debugging
+- Medium-scale simulations (512² 2D, 128³ 3D)
+- Personal workstations
+- Learning and education
+
+### GPU Selection Guidelines
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    GPU Selection Flowchart                       │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Need ECC memory for production? ──────────────────────────────►│
+│      │                                                           │
+│      ├── YES ──► Need latest architecture? ──────────────────►  │
+│      │               │                                           │
+│      │               ├── YES ──► RTX 6000 Ada (48GB ECC)        │
+│      │               │                                           │
+│      │               └── NO ──► RTX A6000 (48GB ECC, cheaper)   │
+│      │                                                           │
+│      └── NO ──► Memory requirement? ─────────────────────────►  │
+│                    │                                             │
+│                    ├── >32GB ──► RTX A6000 or RTX 6000 Ada      │
+│                    │                                             │
+│                    ├── 16-32GB ──► RTX 4090 (24GB) or A100      │
+│                    │                                             │
+│                    └── <16GB ──► RTX 4090 or RTX 3090           │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Memory Comparison for Typical Simulations
+
+| Simulation | RTX 4090 (24GB) | RTX A6000/6000 (48GB) |
+|------------|-----------------|------------------------|
+| 2D 256×256, 1M particles | ✅ ~1 GB | ✅ ~1 GB |
+| 2D 512×512, 10M particles | ✅ ~6 GB | ✅ ~6 GB |
+| 2D 1024×1024, 50M particles | ⚠️ ~20 GB | ✅ ~20 GB |
+| 2D 2048×2048, 100M particles | ❌ OOM | ✅ ~45 GB |
+| 3D 64³, 1M particles | ✅ ~1.5 GB | ✅ ~1.5 GB |
+| 3D 128³, 10M particles | ✅ ~10 GB | ✅ ~10 GB |
+| 3D 256³, 50M particles | ❌ OOM | ✅ ~40 GB |
+
+### Driver Configuration
+
+#### Professional GPUs (RTX 6000 Ada, RTX A6000)
+
+```bash
+# Install NVIDIA professional driver
+sudo apt install nvidia-driver-535-server
+
+# Or use NVIDIA's official driver
+# Download from: https://www.nvidia.com/drivers
+
+# Verify driver mode
+nvidia-smi -q | grep "Driver Model"
+# Should show: WDDM or TCC (TCC is better for compute)
+
+# Enable TCC mode (Windows, for compute-only)
+nvidia-smi -dm 1
+
+# Enable persistence mode (Linux, recommended)
+sudo nvidia-smi -pm 1
+```
+
+#### Consumer GPUs (RTX 4090)
+
+```bash
+# Install Game Ready driver or Studio driver
+# Studio driver is more stable for compute workloads
+
+# Check driver type
+nvidia-smi
+
+# For EPOCH-GPU, Game Ready driver works fine
+# Studio driver recommended for mixed workloads
+```
+
+### Performance Comparison (EPOCH-GPU Benchmarks)
+
+| GPU | 1D Push (1M) | 2D Push (1M) | 3D Push (500K) | Field Update (256²) |
+|-----|--------------|--------------|----------------|---------------------|
+| V100 (32GB) | 5.98B/s | 5.30B/s | 4.30B/s | 1.87B cells/s |
+| A100 (40GB) | ~7.5B/s* | ~6.8B/s* | ~5.5B/s* | ~2.5B cells/s* |
+| RTX A6000 | ~6.0B/s* | ~5.5B/s* | ~4.5B/s* | ~2.0B cells/s* |
+| RTX 4090 | ~7.0B/s* | ~6.5B/s* | ~5.2B/s* | ~2.3B cells/s* |
+| RTX 6000 Ada | ~7.2B/s* | ~6.7B/s* | ~5.4B/s* | ~2.4B cells/s* |
+
+*Estimated based on architecture specifications. V100 numbers are verified.
 
 ### How to Check Your GPU
 
