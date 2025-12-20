@@ -336,12 +336,16 @@ PROGRAM pic
     CALL output_routines(step)
     time = time + dt / 2.0_num
 
-    ! DEBUG: check jx before field update
+    ! DEBUG: check jx before and Ex after field update
     IF (step <= 3 .AND. rank == 0) THEN
-      PRINT*, 'EPOCH DEBUG step', step, ': jx max=', MAXVAL(ABS(jx)), ' at field update'
+      PRINT*, 'BEFORE update: jx max=', MAXVAL(ABS(jx)), ' Ex max=', MAXVAL(ABS(ex))
     END IF
     
     CALL update_eb_fields_final
+    
+    IF (step <= 3 .AND. rank == 0) THEN
+      PRINT*, 'AFTER update: Ex max=', MAXVAL(ABS(ex))
+    END IF
 
     CALL moving_window
   END DO
