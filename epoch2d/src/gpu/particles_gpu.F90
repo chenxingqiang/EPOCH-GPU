@@ -283,38 +283,36 @@ CONTAINS
   !---------------------------------------------------------------------------
   !> @brief Deposit current from particles to grid using atomic operations
   !> @details Uses first-order (linear) weighting with atomic updates for
-  !>          thread safety on GPU.
+  !>          thread safety on GPU. Uses velocity-based current deposition.
   !>
   !> @param[in] n_particles Number of particles
   !> @param[in] pos_x, pos_y Current particle positions
-  !> @param[in] pos_x_old, pos_y_old Previous particle positions
   !> @param[in] px, py, pz Particle momenta
   !> @param[in] weight Particle weight
   !> @param[in] charge Particle charge
   !> @param[in] mass Particle mass
   !> @param[inout] jx, jy, jz Current density arrays
   !> @param[in] x_min, y_min Grid origin
-  !> @param[in] dx, dy, dt Grid spacing and time step
+  !> @param[in] dx, dy Grid spacing
   !> @param[in] nx, ny, ng Grid dimensions
   !---------------------------------------------------------------------------
   SUBROUTINE deposit_current_gpu(n_particles, pos_x, pos_y, &
-      pos_x_old, pos_y_old, px, py, pz, weight, charge, mass, &
-      jx, jy, jz, x_min, y_min, dx, dy, dt, nx, ny, ng)
+      px, py, pz, weight, charge, mass, &
+      jx, jy, jz, x_min, y_min, dx, dy, nx, ny, ng)
     
     INTEGER(i8), INTENT(IN) :: n_particles
     REAL(num), INTENT(IN) :: pos_x(:), pos_y(:)
-    REAL(num), INTENT(IN) :: pos_x_old(:), pos_y_old(:)
     REAL(num), INTENT(IN) :: px(:), py(:), pz(:)
     REAL(num), INTENT(IN) :: weight, charge, mass
     REAL(num), INTENT(INOUT) :: jx(1-ng:nx+ng, 1-ng:ny+ng)
     REAL(num), INTENT(INOUT) :: jy(1-ng:nx+ng, 1-ng:ny+ng)
     REAL(num), INTENT(INOUT) :: jz(1-ng:nx+ng, 1-ng:ny+ng)
-    REAL(num), INTENT(IN) :: x_min, y_min, dx, dy, dt
+    REAL(num), INTENT(IN) :: x_min, y_min, dx, dy
     INTEGER, INTENT(IN) :: nx, ny, ng
     
     INTEGER(i8) :: ip
     INTEGER :: ix, iy
-    REAL(num) :: idx, idy, idt
+    REAL(num) :: idx, idy
     REAL(num) :: rx, ry
     REAL(num) :: wx0, wx1, wy0, wy1
     REAL(num) :: part_mc, gamma_rel, vx, vy, vz
@@ -323,7 +321,6 @@ CONTAINS
     
     idx = 1.0_num / dx
     idy = 1.0_num / dy
-    idt = 1.0_num / dt
     part_mc = c * mass
     factor = weight * charge / (dx * dy)
     

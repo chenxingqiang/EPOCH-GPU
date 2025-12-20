@@ -377,17 +377,16 @@ CONTAINS
       CALL CPU_TIME(t_end)
       time_particle_push = time_particle_push + (t_end - t_start)
 
-      ! Deposit current
+      ! Deposit current (velocity-based method)
       CALL CPU_TIME(t_start)
       CALL deposit_current_gpu( &
           species_gpu(isp)%count, &
           species_gpu(isp)%pos_x, species_gpu(isp)%pos_y, &
-          species_gpu(isp)%pos_x, species_gpu(isp)%pos_y, &  ! Use same for old (simplified)
           species_gpu(isp)%px, species_gpu(isp)%py, species_gpu(isp)%pz, &
           1.0_num, &  ! Scalar weight
           species_gpu(isp)%charge, species_gpu(isp)%mass, &
           jx_gpu, jy_gpu, jz_gpu, &
-          x_min_gpu, y_min_gpu, dx_gpu, dy_gpu, dt_gpu, &
+          x_min_gpu, y_min_gpu, dx_gpu, dy_gpu, &
           nx_gpu, ny_gpu, ng_gpu)
       !$ACC WAIT
       CALL CPU_TIME(t_end)

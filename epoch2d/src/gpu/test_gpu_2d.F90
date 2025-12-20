@@ -25,7 +25,6 @@ PROGRAM test_gpu_2d
   
   ! Particle arrays
   REAL(num), ALLOCATABLE :: pos_x(:), pos_y(:)
-  REAL(num), ALLOCATABLE :: pos_x_old(:), pos_y_old(:)
   REAL(num), ALLOCATABLE :: px(:), py(:), pz(:)
   REAL(num) :: weight
   REAL(num), ALLOCATABLE :: ex_p(:), ey_p(:), ez_p(:)
@@ -83,7 +82,6 @@ PROGRAM test_gpu_2d
   
   ! Allocate particle arrays
   ALLOCATE(pos_x(n_particles), pos_y(n_particles))
-  ALLOCATE(pos_x_old(n_particles), pos_y_old(n_particles))
   ALLOCATE(px(n_particles), py(n_particles), pz(n_particles))
   weight = 1.0e10_num
   ALLOCATE(ex_p(n_particles), ey_p(n_particles), ez_p(n_particles))
@@ -184,20 +182,18 @@ PROGRAM test_gpu_2d
   ! Test 4: Current Deposition GPU (2D)
   !================================================
   WRITE(*,*) ""
-  WRITE(*,*) "Test 4: 2D Current Deposition GPU (Atomic)"
+  WRITE(*,*) "Test 4: 2D Current Deposition GPU (Velocity-based)"
   
   jx = 0.0_num; jy = 0.0_num; jz = 0.0_num
-  pos_x_old = pos_x
-  pos_y_old = pos_y
   
-  !$ACC ENTER DATA COPYIN(pos_x, pos_y, pos_x_old, pos_y_old, px, py, pz, jx, jy, jz)
+  !$ACC ENTER DATA COPYIN(pos_x, pos_y, px, py, pz, jx, jy, jz)
   
   CALL CPU_TIME(start_time)
   DO i = 1, 100
     CALL deposit_current_gpu(n_particles, pos_x, pos_y, &
-                              pos_x_old, pos_y_old, px, py, pz, weight, &
+                              px, py, pz, weight, &
                               charge, mass, jx, jy, jz, &
-                              x_min, y_min, dx, dy, dt, nx_test, ny_test, ng)
+                              x_min, y_min, dx, dy, nx_test, ny_test, ng)
   END DO
   !$ACC WAIT
   CALL CPU_TIME(end_time)
@@ -207,7 +203,7 @@ PROGRAM test_gpu_2d
   WRITE(*,*) "  Per iteration: ", elapsed/100.0_num, " ms"
   
   !$ACC EXIT DATA COPYOUT(jx, jy, jz)
-  !$ACC EXIT DATA DELETE(pos_x, pos_y, pos_x_old, pos_y_old, px, py, pz)
+  !$ACC EXIT DATA DELETE(pos_x, pos_y, px, py, pz)
   
   !================================================
   ! Verification
@@ -227,7 +223,7 @@ PROGRAM test_gpu_2d
   
   ! Cleanup
   DEALLOCATE(ex, ey, ez, bx, by, bz, jx, jy, jz)
-  DEALLOCATE(pos_x, pos_y, pos_x_old, pos_y_old, px, py, pz)
+  DEALLOCATE(pos_x, pos_y, px, py, pz)
   DEALLOCATE(ex_p, ey_p, ez_p, bx_p, by_p, bz_p)
   
   CALL gpu_finalize()
