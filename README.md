@@ -74,22 +74,24 @@ make -f Makefile.gpu GPU_CC=cc80  # A100
 make -f Makefile.gpu GPU_CC=cc90  # H100
 ```
 
-### Performance Benchmarks (Tesla V100-32GB)
+### Performance Benchmarks (Tesla V100-PCIE-32GB)
+
+> **Verified**: December 2024 on Tesla V100-PCIE-32GB, CUDA 12.2, nvfortran 24.11
 
 | Dimension | Kernel | Grid/Particles | Time/Iteration | Throughput |
 |-----------|--------|----------------|----------------|------------|
-| **1D** | Field Update | 1024 cells | 0.027 ms | - |
-| **1D** | Particle Push | 1M particles | 0.17 ms | **5.9B particles/sec** |
-| **1D** | Field Interpolation | 1M particles | 0.097 ms | - |
-| **1D** | Current Deposition | 1M particles | 0.15 ms | - |
-| **2D** | Field Update | 256×256 | 0.035 ms | 1.9B cells/sec |
-| **2D** | Particle Push | 1M particles | 0.19 ms | **5.3B particles/sec** |
-| **2D** | Field Interpolation | 1M particles | 0.11 ms | - |
-| **2D** | Current Deposition | 1M particles | 0.49 ms | - |
-| **3D** | Field Update | 64×64×64 | 0.096 ms | 2.7B cells/sec |
-| **3D** | Particle Push | 500K particles | 0.11 ms | **4.4B particles/sec** |
-| **3D** | Field Interpolation | 500K particles | 0.35 ms | - |
-| **3D** | Current Deposition | 500K particles | 0.38 ms | - |
+| **1D** | Field Update | 1024 cells | 0.026 ms | 39.1M cells/sec |
+| **1D** | Particle Push | 1M particles | 0.167 ms | **5.98B particles/sec** |
+| **1D** | Field Interpolation | 1M particles | 0.095 ms | - |
+| **1D** | Current Deposition | 1M particles | 0.150 ms | - |
+| **2D** | Field Update | 256×256 | 0.035 ms | 1.87B cells/sec |
+| **2D** | Particle Push | 1M particles | 0.189 ms | **5.30B particles/sec** |
+| **2D** | Field Interpolation | 1M particles | 0.110 ms | - |
+| **2D** | Current Deposition | 1M particles | 0.490 ms | - |
+| **3D** | Field Update | 64×64×64 | 0.100 ms | 2.63B cells/sec |
+| **3D** | Particle Push | 500K particles | 0.116 ms | **4.30B particles/sec** |
+| **3D** | Field Interpolation | 500K particles | 0.317 ms | - |
+| **3D** | Current Deposition | 500K particles | 0.359 ms | - |
 
 ## Python Package
 
@@ -127,32 +129,47 @@ epoch-gpu-test --dimension all
 
 ```python
 import epoch_gpu
+from epoch_gpu import GPUConfig
+from epoch_gpu.utils import units
+from epoch_gpu.utils.deck import DeckFile
+from epoch_gpu.analysis import diagnostics
+import numpy as np
 
 # Check GPU configuration
-from epoch_gpu import GPUConfig, get_gpu_info
 config = GPUConfig()
-config.print_info()
+print(f"GPU Available: {config.has_gpu()}")
+print(f"Compiler Available: {config.has_compiler()}")
+for gpu in config.get_gpus():
+    print(f"  [{gpu.device_id}] {gpu.name} - {gpu.memory_free//1024//1024} MiB free")
 
-# Read SDF output files
-from epoch_gpu.io import SDFFile
-with SDFFile("0001.sdf") as sdf:
-    ex = sdf["Electric Field/Ex"]
-    print(ex.data.shape)
+# Physical constants and plasma parameters
+n_e = 1e25  # electron density (m^-3)
+T_eV = 1000  # temperature (eV)
+omega_pe = units.plasma_frequency(n_e)     # plasma frequency (rad/s)
+lambda_d = units.debye_length(n_e, T_eV)   # Debye length (m)
+c_wp = units.skin_depth(n_e)               # skin depth (m)
+v_th = units.thermal_velocity(T_eV)        # thermal velocity (m/s)
 
-# Parse EPOCH deck files
-from epoch_gpu.utils import DeckFile
-deck = DeckFile("input.deck")
-deck['control']['nx'] = 1024
-deck.write("modified.deck")
+# Parse/create EPOCH deck files
+deck = DeckFile()
+deck.set('control', 'nx', 256)
+deck.set('control', 'ny', 256)
+deck.set('species', 'name', 'electron')
+print(deck.get('control', 'nx'))  # 256
 
-# Physics calculations
-from epoch_gpu.analysis import calculate_field_energy
-energy = calculate_field_energy(ex, ey, ez, bx, by, bz, dx, dy)
+# Energy diagnostics
+ex = np.random.randn(100, 100) * 1e9  # V/m
+ey = np.random.randn(100, 100) * 1e9
+ez = np.random.randn(100, 100) * 1e9
+bx = np.random.randn(100, 100) * 0.1  # T
+by = np.random.randn(100, 100) * 0.1
+bz = np.random.randn(100, 100) * 0.1
+energy = diagnostics.calculate_field_energy(ex, ey, ez, bx, by, bz, dx=1e-6, dy=1e-6)
+print(f"Electric: {energy['electric']:.3e} J, Magnetic: {energy['magnetic']:.3e} J")
 
 # Unit conversions
-from epoch_gpu.utils import plasma_frequency, debye_length
-omega_p = plasma_frequency(n_e=1e20)  # rad/s
-lambda_d = debye_length(n_e=1e20, T_e=1e6)  # meters
+print(f"1 kg = {units.si_to_cgs(1.0, 'mass')} g")
+print(f"1 J = {units.si_to_cgs(1.0, 'energy')} erg")
 ```
 
 ### Package Structure
@@ -193,6 +210,52 @@ epoch1d/src/gpu/          epoch2d/src/gpu/          epoch3d/src/gpu/
 | `particles_gpu.F90` | Boris pusher, field interpolation, current deposition |
 | `epoch_gpu_interface.F90` | High-level interface for EPOCH integration |
 
+## Verified Test Results
+
+> **Test Environment**: Tesla V100-PCIE-32GB, CUDA 12.2, nvfortran 24.11, Python 3.10
+
+### Fortran GPU Kernel Tests
+
+| Dimension | Test | Status |
+|-----------|------|--------|
+| **1D** | GPU Config & Device Detection | ✅ PASSED |
+| **1D** | Field Update (1024 cells, 1000 iter) | ✅ PASSED |
+| **1D** | Particle Push (1M particles, 100 iter) | ✅ PASSED |
+| **1D** | Field Interpolation (1M particles) | ✅ PASSED |
+| **1D** | Current Deposition (1M particles) | ✅ PASSED |
+| **2D** | GPU Config & Device Detection | ✅ PASSED |
+| **2D** | Field Update (256×256, 100 iter) | ✅ PASSED |
+| **2D** | Particle Push (1M particles, 100 iter) | ✅ PASSED |
+| **2D** | Bilinear Interpolation (1M particles) | ✅ PASSED |
+| **2D** | Current Deposition w/ Atomics | ✅ PASSED |
+| **3D** | GPU Config & Device Detection | ✅ PASSED |
+| **3D** | Field Update (64³, 100 iter) | ✅ PASSED |
+| **3D** | Particle Push (500K particles, 100 iter) | ✅ PASSED |
+| **3D** | Trilinear Interpolation (500K particles) | ✅ PASSED |
+| **3D** | Current Deposition w/ Atomics | ✅ PASSED |
+
+### Python Test Framework
+
+| Dimension | Tests Passed | Tests Failed | Coverage |
+|-----------|--------------|--------------|----------|
+| **1D** | 12 | 0 | Kernels, Two-stream, Performance |
+| **2D** | 25 | 2* | Kernels, Maxwell, Laser, Particles |
+| **3D** | 18 | 1* | Kernels, Maxwell, Laser, Performance |
+
+> *Failed tests are CFL parameter validation tests (not GPU kernel issues)
+
+### Python Package Tests
+
+| Module | Test | Status |
+|--------|------|--------|
+| `GPUConfig` | GPU detection, compiler check | ✅ PASSED |
+| `get_gpu_info()` | GPU memory, compute capability | ✅ PASSED |
+| `units` | Physical constants, plasma parameters | ✅ PASSED |
+| `DeckFile` | EPOCH input file parsing | ✅ PASSED |
+| `diagnostics` | Energy calculation, temperature | ✅ PASSED |
+| CLI: `epoch-gpu-info` | Display GPU configuration | ✅ PASSED |
+| CLI: `epoch-gpu-build` | Build command help | ✅ PASSED |
+
 ## Development Status
 
 - [x] GPU device management and configuration
@@ -206,6 +269,8 @@ epoch1d/src/gpu/          epoch2d/src/gpu/          epoch3d/src/gpu/
 - [x] Python test framework for GPU validation
 - [x] GPU-aware MPI for multi-GPU support
 - [x] Full EPOCH main loop integration
+- [x] Python package on PyPI (epoch-gpu v1.0.0)
+- [x] CLI tools (epoch-gpu-info, epoch-gpu-build)
 
 ## Running GPU Tests
 

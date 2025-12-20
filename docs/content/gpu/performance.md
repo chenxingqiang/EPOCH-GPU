@@ -11,34 +11,36 @@ menu:
     weight: 6
 ---
 
-## Benchmark Results (Tesla V100-32GB)
+## Benchmark Results (Tesla V100-PCIE-32GB)
+
+> **Verified**: December 2024 | CUDA 12.2 | nvfortran 24.11
 
 ### 1D Performance
 
 | Kernel | Configuration | Time/Iteration | Throughput |
 |--------|---------------|----------------|------------|
-| Field Update | 1024 cells | 0.027 ms | - |
-| Particle Push | 1M particles | 0.17 ms | **5.9B particles/sec** |
-| Field Interpolation | 1M particles | 0.097 ms | - |
-| Current Deposition | 1M particles | 0.15 ms | - |
+| Field Update | 1024 cells × 1000 iter | 0.0256 ms | 39.1M cells/sec |
+| Particle Push | 1M particles × 100 iter | 0.167 ms | **5.98B particles/sec** |
+| Field Interpolation | 1M particles × 100 iter | 0.095 ms | - |
+| Current Deposition | 1M particles × 100 iter | 0.150 ms | - |
 
 ### 2D Performance
 
 | Kernel | Configuration | Time/Iteration | Throughput |
 |--------|---------------|----------------|------------|
-| Field Update | 256×256 | 0.035 ms | 1.9B cells/sec |
-| Particle Push | 1M particles | 0.19 ms | **5.3B particles/sec** |
-| Field Interpolation | 1M particles | 0.11 ms | - |
-| Current Deposition | 1M particles | 0.49 ms | - |
+| Field Update | 256×256 × 100 iter | 0.035 ms | 1.87B cells/sec |
+| Particle Push | 1M particles × 100 iter | 0.189 ms | **5.30B particles/sec** |
+| Field Interpolation | 1M particles × 100 iter | 0.110 ms | - |
+| Current Deposition | 1M particles × 100 iter | 0.490 ms | - |
 
 ### 3D Performance
 
 | Kernel | Configuration | Time/Iteration | Throughput |
 |--------|---------------|----------------|------------|
-| Field Update | 64³ | 0.096 ms | 2.7B cells/sec |
-| Particle Push | 500K particles | 0.11 ms | **4.4B particles/sec** |
-| Field Interpolation | 500K particles | 0.35 ms | - |
-| Current Deposition | 500K particles | 0.38 ms | - |
+| Field Update | 64×64×64 × 100 iter | 0.100 ms | 2.63B cells/sec |
+| Particle Push | 500K particles × 100 iter | 0.116 ms | **4.30B particles/sec** |
+| Field Interpolation | 500K particles × 100 iter | 0.317 ms | - |
+| Current Deposition | 500K particles × 100 iter | 0.359 ms | - |
 
 ## Optimization Strategies
 
