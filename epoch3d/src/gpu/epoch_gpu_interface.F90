@@ -115,9 +115,9 @@ CONTAINS
       np = species_soa(ispecies)%count
       IF (np <= 0) CYCLE
       
-      ! Convert from EPOCH normalized units to SI units
-      charge = species_list(ispecies)%charge * q0
-      mass = species_list(ispecies)%mass * m0
+      ! Get particle charge and mass (already in SI units in EPOCH)
+      charge = species_list(ispecies)%charge
+      mass = species_list(ispecies)%mass
       
       ! Allocate temporary arrays
       ALLOCATE(ex_p(np), ey_p(np), ez_p(np))

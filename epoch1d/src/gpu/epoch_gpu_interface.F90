@@ -115,9 +115,9 @@ CONTAINS
       np = species_soa(ispecies)%count
       IF (np <= 0) CYCLE
       
-      ! Convert from EPOCH normalized units to SI units
-      charge = species_list(ispecies)%charge * q0
-      mass = species_list(ispecies)%mass * m0
+      ! Get particle charge and mass (already in SI units in EPOCH)
+      charge = species_list(ispecies)%charge
+      mass = species_list(ispecies)%mass
       
       ! Allocate temporary arrays
       ALLOCATE(ex_p(np), ey_p(np), ez_p(np))
@@ -173,11 +173,6 @@ CONTAINS
     
     ! Sync current back to CPU for field update
     !$ACC UPDATE HOST(jx, jy, jz)
-    
-    ! Debug: print max current values
-    PRINT*, '1D GPU DEBUG: jx max = ', MAXVAL(ABS(jx)), ' jy max = ', MAXVAL(ABS(jy))
-    PRINT*, '1D DEBUG: raw charge = ', species_list(1)%charge
-    PRINT*, '1D DEBUG: used charge (charge*q0) = ', species_list(1)%charge * q0
     
     ! Clean up field arrays from GPU
     !$ACC EXIT DATA DELETE(ex, ey, ez, bx, by, bz)

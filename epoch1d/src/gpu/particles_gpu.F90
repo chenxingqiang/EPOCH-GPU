@@ -288,12 +288,6 @@ CONTAINS
       qw_idt = charge * weight(ip) * idt  ! For Jx (charge conservation)
       qw_idx = charge * weight(ip) * idx  ! For Jy, Jz (velocity-based)
       
-      ! DEBUG: print for first particle
-      IF (ip == 1) THEN
-        PRINT*, '1D DEPOSIT DEBUG: charge=', charge, ' weight=', weight(ip)
-        PRINT*, '1D DEPOSIT DEBUG: qw_idt=', qw_idt, ' dw(0)=', dw(0), ' dw(1)=', dw(1)
-      END IF
-      
       ! Esirkepov Jx deposition: cumulative sum of -dw
       ! This ensures exact charge conservation
       jx_accum = 0.0_num
