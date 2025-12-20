@@ -330,10 +330,10 @@ CONTAINS
       dcelly = iy_new - iy_old
       dcellz = iz_new - iz_old
       
-      ! Use old cell as reference
-      ix_base = MAX(1, MIN(ix_old, nx-1))
-      iy_base = MAX(1, MIN(iy_old, ny-1))
-      iz_base = MAX(1, MIN(iz_old, nz-1))
+      ! Use old cell as reference (EPOCH grid is 0-indexed)
+      ix_base = MAX(0, MIN(ix_old, nx-1))
+      iy_base = MAX(0, MIN(iy_old, ny-1))
+      iz_base = MAX(0, MIN(iz_old, nz-1))
       
       ! First-order shape functions at old position
       wx_old = 0.0_num; wy_old = 0.0_num; wz_old = 0.0_num

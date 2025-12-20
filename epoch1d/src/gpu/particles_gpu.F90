@@ -254,8 +254,8 @@ CONTAINS
       ! Use old cell as reference
       ix_base = ix_old
       
-      ! Clamp to valid grid range
-      ix_base = MAX(1, MIN(ix_base, nx-1))
+      ! Clamp to valid grid range (EPOCH grid is 0-indexed)
+      ix_base = MAX(0, MIN(ix_base, nx-1))
       
       ! First-order (linear) shape functions at old position
       ! W(-1)=0, W(0)=1-frac, W(1)=frac for cell-centered
