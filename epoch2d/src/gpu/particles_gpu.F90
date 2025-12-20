@@ -406,50 +406,49 @@ CONTAINS
       dwx = wx_new - wx_old
       dwy = wy_new - wy_old
       
-      ! Compute transverse velocity for Jz
+      ! Compute gamma for velocity calculation
       gamma_rel = SQRT((px(ip)*ipart_mc)**2 + (py(ip)*ipart_mc)**2 + &
                        (pz(ip)*ipart_mc)**2 + 1.0_num)
       igamma = 1.0_num / gamma_rel
-      vz = pz(ip) * ipart_mc * igamma * c
       
-      ! Current factors for 2D Esirkepov
-      ! Same as 1D - shape functions handle spatial distribution
-      qw_idt = charge * weight(ip) * idt  ! For Jx, Jy (charge conservation)
-      qw_idxy = charge * weight(ip) * idx * idy  ! For Jz (velocity-based)
+      ! Use new position for velocity-based deposition
+      qw_idxy = charge * weight(ip) * idx * idy
       
-      ! Esirkepov Jx deposition (cumulative in x)
-      DO iy = -1, 2
-        IF (iy_base + iy < 1 - ng .OR. iy_base + iy > ny + ng) CYCLE
-        jx_accum = 0.0_num
-        DO ix = -1, 2
-          IF (ix_base + ix < 1 - ng .OR. ix_base + ix > nx + ng) CYCLE
-          jx_accum = jx_accum - qw_idt * dwx(ix) * (wy_old(iy) + 0.5_num * dwy(iy))
-          !$ACC ATOMIC UPDATE
-          jx(ix_base + ix, iy_base + iy) = jx(ix_base + ix, iy_base + iy) + jx_accum
+      ! Jx from velocity * shape at new position
+      DO iy = 0, 1
+        DO ix = 0, 1
+          IF (ix_new + ix >= 1 - ng .AND. ix_new + ix <= nx + ng .AND. &
+              iy_new + iy >= 1 - ng .AND. iy_new + iy <= ny + ng) THEN
+            jx_accum = qw_idxy * px(ip) * ipart_mc * igamma * c * &
+                      wx_new(dcellx + ix) * wy_new(dcelly + iy)
+            !$ACC ATOMIC UPDATE
+            jx(ix_new + ix, iy_new + iy) = jx(ix_new + ix, iy_new + iy) + jx_accum
+          END IF
         END DO
       END DO
       
-      ! Esirkepov Jy deposition (cumulative in y)
-      DO ix = -1, 2
-        IF (ix_base + ix < 1 - ng .OR. ix_base + ix > nx + ng) CYCLE
-        jy_accum = 0.0_num
-        DO iy = -1, 2
-          IF (iy_base + iy < 1 - ng .OR. iy_base + iy > ny + ng) CYCLE
-          jy_accum = jy_accum - qw_idt * dwy(iy) * (wx_old(ix) + 0.5_num * dwx(ix))
-          !$ACC ATOMIC UPDATE
-          jy(ix_base + ix, iy_base + iy) = jy(ix_base + ix, iy_base + iy) + jy_accum
+      ! Jy from velocity * shape at new position
+      DO iy = 0, 1
+        DO ix = 0, 1
+          IF (ix_new + ix >= 1 - ng .AND. ix_new + ix <= nx + ng .AND. &
+              iy_new + iy >= 1 - ng .AND. iy_new + iy <= ny + ng) THEN
+            jy_accum = qw_idxy * py(ip) * ipart_mc * igamma * c * &
+                      wx_new(dcellx + ix) * wy_new(dcelly + iy)
+            !$ACC ATOMIC UPDATE
+            jy(ix_new + ix, iy_new + iy) = jy(ix_new + ix, iy_new + iy) + jy_accum
+          END IF
         END DO
       END DO
       
-      ! Jz from velocity with averaged shape
-      DO iy = -1, 2
-        IF (iy_base + iy < 1 - ng .OR. iy_base + iy > ny + ng) CYCLE
-        DO ix = -1, 2
-          IF (ix_base + ix < 1 - ng .OR. ix_base + ix > nx + ng) CYCLE
-          jz_contrib = qw_idxy * vz * (wx_old(ix) + 0.5_num * dwx(ix)) * &
-                                      (wy_old(iy) + 0.5_num * dwy(iy))
-          !$ACC ATOMIC UPDATE
-          jz(ix_base + ix, iy_base + iy) = jz(ix_base + ix, iy_base + iy) + jz_contrib
+      ! Jz from velocity * shape at new position
+      DO iy = 0, 1
+        DO ix = 0, 1
+          IF (ix_new + ix >= 1 - ng .AND. ix_new + ix <= nx + ng .AND. &
+              iy_new + iy >= 1 - ng .AND. iy_new + iy <= ny + ng) THEN
+            jz_contrib = qw_idxy * vz * wx_new(dcellx + ix) * wy_new(dcelly + iy)
+            !$ACC ATOMIC UPDATE
+            jz(ix_new + ix, iy_new + iy) = jz(ix_new + ix, iy_new + iy) + jz_contrib
+          END IF
         END DO
       END DO
     END DO
