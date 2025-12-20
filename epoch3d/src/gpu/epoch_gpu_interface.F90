@@ -105,6 +105,10 @@ CONTAINS
     REAL(num), ALLOCATABLE :: bx_p(:), by_p(:), bz_p(:)
     REAL(num) :: charge, mass
     
+    ! Transfer field and current arrays to GPU
+    !$ACC ENTER DATA COPYIN(ex, ey, ez, bx, by, bz)
+    !$ACC ENTER DATA COPYIN(jx, jy, jz)
+    
     DO ispecies = 1, n_species
       np = species_soa(ispecies)%count
       IF (np <= 0) CYCLE
@@ -160,6 +164,13 @@ CONTAINS
       DEALLOCATE(ex_p, ey_p, ez_p)
       DEALLOCATE(bx_p, by_p, bz_p)
     END DO
+    
+    ! Sync current back to CPU for field update
+    !$ACC UPDATE HOST(jx, jy, jz)
+    
+    ! Clean up field arrays from GPU
+    !$ACC EXIT DATA DELETE(ex, ey, ez, bx, by, bz)
+    !$ACC EXIT DATA DELETE(jx, jy, jz)
 #else
     TYPE(*), INTENT(INOUT) :: species_soa(:)
     TYPE(*), INTENT(IN) :: species_list(:)
