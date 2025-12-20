@@ -255,17 +255,10 @@ PROGRAM pic
 #endif
 
     ! Update E and B fields (first half step)
-#ifdef GPU_ENABLED
-    IF (gpu_available) THEN
-      CALL update_e_field_gpu(ex, ey, ez, bx, by, bz, jx, jy, jz, &
-                              nx, ny, dt, dx, dy)
-      CALL update_b_field_gpu(ex, ey, ez, bx, by, bz, nx, ny, dt, dx, dy)
-    ELSE
-#endif
+! Note: GPU field updates use the same physics as CPU but with GPU acceleration
+! For now, use CPU field update which is already optimized
+! GPU field kernels require additional setup for boundary conditions
       CALL update_eb_fields_half
-#ifdef GPU_ENABLED
-    END IF
-#endif
 
     IF (push) THEN
       CALL run_injectors
@@ -333,18 +326,7 @@ PROGRAM pic
     CALL output_routines(step)
     time = time + dt / 2.0_num
 
-    ! Update E and B fields (final half step)
-#ifdef GPU_ENABLED
-    IF (gpu_available) THEN
-      CALL update_e_field_gpu(ex, ey, ez, bx, by, bz, jx, jy, jz, &
-                              nx, ny, dt, dx, dy)
-      CALL update_b_field_gpu(ex, ey, ez, bx, by, bz, nx, ny, dt, dx, dy)
-    ELSE
-#endif
-      CALL update_eb_fields_final
-#ifdef GPU_ENABLED
-    END IF
-#endif
+    CALL update_eb_fields_final
 
     CALL moving_window
   END DO
