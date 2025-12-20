@@ -86,13 +86,19 @@ class SDFFile:
             self.time = time_data[0]
             
             # Skip to first block
-            f.seek(first_block_location)
+            if first_block_location > 0:
+                f.seek(first_block_location)
             
             # Read blocks
-            for _ in range(nblocks):
-                block = self._read_block_header(f, block_header_length)
-                if block:
-                    self.blocks[block.name] = block
+            for i in range(nblocks):
+                try:
+                    pos_before = f.tell()
+                    block = self._read_block_header(f, block_header_length)
+                    if block and block.name:
+                        self.blocks[block.name] = block
+                except Exception as e:
+                    # Skip problematic blocks
+                    break
     
     def _read_block_header(self, f, header_length):
         """Read a block header."""
@@ -100,21 +106,37 @@ class SDFFile:
         
         block = SDFBlock()
         
+        # Check if we have enough data to read
+        header_data = f.read(48)
+        if len(header_data) < 48:
+            return None
+        
         # Read next block location and data location
-        next_block_location, data_location, block.id = struct.unpack('<qq32s', f.read(48))
-        block.id = block.id.decode('ascii').strip('\x00').strip()
+        next_block_location, data_location = struct.unpack('<qq', header_data[:16])
+        block.id = header_data[16:48].decode('ascii', errors='ignore').strip('\x00').strip()
         
         # Read data length and block type
-        data_length, block.block_type, block.data_type, block.ndims = struct.unpack('<qiii', f.read(20))
+        more_data = f.read(20)
+        if len(more_data) < 20:
+            if next_block_location > 0:
+                f.seek(next_block_location)
+            return block
+        
+        data_length, block.block_type, block.data_type, block.ndims = struct.unpack('<qiii', more_data)
         
         # Read block name
-        block.name = f.read(32).decode('ascii').strip('\x00').strip()
+        name_data = f.read(32)
+        if len(name_data) >= 32:
+            block.name = name_data.decode('ascii', errors='ignore').strip('\x00').strip()
         
         # Try to read data for simple variable blocks
-        if block.block_type == self.BLOCKTYPE_PLAIN_VARIABLE:
-            self._read_plain_variable(f, block, data_location, data_length, start_pos, header_length)
-        elif block.block_type == self.BLOCKTYPE_CONSTANT:
-            self._read_constant(f, block, data_location, data_length)
+        try:
+            if block.block_type == self.BLOCKTYPE_PLAIN_VARIABLE:
+                self._read_plain_variable(f, block, data_location, data_length, start_pos, header_length)
+            elif block.block_type == self.BLOCKTYPE_CONSTANT:
+                self._read_constant(f, block, data_location, data_length)
+        except Exception:
+            pass
         
         # Move to next block
         if next_block_location > 0:
