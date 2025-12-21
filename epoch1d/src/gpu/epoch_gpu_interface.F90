@@ -194,6 +194,10 @@ CONTAINS
     WRITE(*,'(A,E15.7)') 'DEBUG_1D: dx = ', dx
     WRITE(*,'(A,E15.7)') 'DEBUG_1D: dt = ', dt
     WRITE(*,'(A,E15.7)') 'DEBUG_1D: x_min = ', x_min
+    ! Show jx distribution
+    WRITE(*,'(A,E15.7)') 'DEBUG_1D: jx(1) = ', jx(1)
+    WRITE(*,'(A,E15.7)') 'DEBUG_1D: jx(64) = ', jx(64)
+    WRITE(*,'(A,E15.7)') 'DEBUG_1D: jx(nx) = ', jx(nx)
     ! #endregion
     
     ! Clean up field arrays from GPU
