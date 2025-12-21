@@ -236,39 +236,54 @@ CONTAINS
     !$ACC& PRIVATE(gamma_rel, igamma, vy, vz, qw_idt, qw_idx) &
     !$ACC& PRIVATE(jx_accum, jy_contrib, jz_contrib)
     DO ip = 1, n_particles
-      ! Cell coordinates at old and new positions
+      ! Cell coordinates at old and new positions (in cell units)
       cell_x_old = (pos_x_old(ip) - x_min) * idx
       cell_x_new = (pos_x_new(ip) - x_min) * idx
       
-      ! Cell indices (1-based indexing)
-      ix_old = INT(cell_x_old) + 1
-      ix_new = INT(cell_x_new) + 1
+      ! =========================================================
+      ! CELL-CENTERED CONVENTION (matching CPU exactly)
+      ! =========================================================
+      ! Round to nearest cell (0-based), then convert to 1-based
+      ix_old = FLOOR(cell_x_old + 0.5_num) + 1
+      ix_new = FLOOR(cell_x_new + 0.5_num) + 1
       
-      ! Fractional positions within cell [0,1)
-      frac_old = cell_x_old - REAL(ix_old - 1, num)
-      frac_new = cell_x_new - REAL(ix_new - 1, num)
+      ! Fractional position relative to cell CENTER
+      ! frac > 0: particle is LEFT of cell center
+      ! frac < 0: particle is RIGHT of cell center
+      ! Range: [-0.5, 0.5)
+      frac_old = REAL(ix_old - 1, num) - cell_x_old
+      frac_new = REAL(ix_new - 1, num) - cell_x_new
       
-      ! Cell displacement (should be -1, 0, or +1 for CFL-stable simulations)
+      ! Cell displacement
       dcell = ix_new - ix_old
       
-      ! Use old cell as reference (1-based, clamped to physics cells)
-      ix_base = MAX(1, MIN(ix_old, nx))
+      ! Use old cell as reference
+      ix_base = ix_old
       
-      ! First-order (linear) shape functions at old position
-      ! W(-1)=0, W(0)=1-frac, W(1)=frac for cell-centered
+      ! =========================================================
+      ! TRIANGULAR SHAPE FUNCTIONS (cell-centered)
+      ! For particle at distance 'frac' from cell center:
+      !   gx(-1) = frac     when frac > 0 (left neighbor)
+      !   gx(0)  = 1 - |frac|  (current cell)
+      !   gx(1)  = -frac    when frac < 0 (right neighbor)
+      ! =========================================================
       wold = 0.0_num
-      wold(0) = 1.0_num - frac_old
-      wold(1) = frac_old
+      IF (frac_old >= 0.0_num) THEN
+        wold(-1) = frac_old
+        wold(0) = 1.0_num - frac_old
+      ELSE
+        wold(0) = 1.0_num + frac_old
+        wold(1) = -frac_old
+      END IF
       
       ! Shape functions at new position (shifted by dcell)
       wnew = 0.0_num
-      IF (dcell >= -1 .AND. dcell <= 1) THEN
+      IF (frac_new >= 0.0_num) THEN
+        wnew(dcell - 1) = frac_new
         wnew(dcell) = 1.0_num - frac_new
-        wnew(dcell+1) = frac_new
       ELSE
-        ! Particle moved too far - use simple deposition at new position
-        wnew(0) = 1.0_num - frac_new
-        wnew(1) = frac_new
+        wnew(dcell) = 1.0_num + frac_new
+        wnew(dcell + 1) = -frac_new
       END IF
       
       ! Shape function difference
@@ -281,18 +296,14 @@ CONTAINS
       vy = py(ip) * ipart_mc * igamma * c
       vz = pz(ip) * ipart_mc * igamma * c
       
-      ! Current factors for 1D Esirkepov
-      ! Additional normalization needed for 1D - empirically determined
-      qw_idt = 0.25_num * charge * weight(ip) * idt  ! For Jx (charge conservation)
-      qw_idx = 0.25_num * charge * weight(ip) * idx  ! For Jy, Jz (velocity-based)
+      ! Current factors - use fac = 0.5 for triangular shape in 1D
+      qw_idt = 0.5_num * charge * weight(ip) * idt  ! For Jx
+      qw_idx = 0.5_num * charge * weight(ip) * idx  ! For Jy, Jz
       
       ! Esirkepov Jx deposition: cumulative sum of -dw
-      ! This ensures exact charge conservation
       jx_accum = 0.0_num
       DO ix = -1, 2
-        ! Check bounds
         IF (ix_base + ix >= 1 - ng .AND. ix_base + ix <= nx + ng) THEN
-          ! Jx from charge displacement
           jx_accum = jx_accum - qw_idt * dw(ix)
           !$ACC ATOMIC UPDATE
           jx(ix_base + ix) = jx(ix_base + ix) + jx_accum
