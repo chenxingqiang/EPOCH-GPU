@@ -158,22 +158,24 @@ CONTAINS
     !$ACC& PRESENT(bx_p(1:n_particles), by_p(1:n_particles), bz_p(1:n_particles)) &
     !$ACC& PRIVATE(cell_x, ix, gx0, gx1)
     DO ip = 1, n_particles
-      ! Edge-centered interpolation (matching 2D convention)
+      ! Simple linear interpolation (edge-centered, like before)
       cell_x = (pos_x(ip) - x_min) * idx
-      ix = INT(cell_x) + 1  ! 1-based index
-      gx1 = cell_x - REAL(ix - 1, num)  ! Fractional position [0, 1)
+      ix = INT(cell_x)
+      gx1 = cell_x - REAL(ix, num)
       gx0 = 1.0_num - gx1
       
-      ! Clamp to valid range
-      ix = MAX(1, MIN(ix, nx))
+      ! Ensure valid 1-based index
+      ix = MAX(1, MIN(ix + 1, nx))
       
       ! Linear interpolation between ix and ix+1
-      ex_p(ip) = gx0 * ex(ix) + gx1 * ex(MIN(nx, ix+1))
-      ey_p(ip) = gx0 * ey(ix) + gx1 * ey(MIN(nx, ix+1))
-      ez_p(ip) = gx0 * ez(ix) + gx1 * ez(MIN(nx, ix+1))
-      bx_p(ip) = gx0 * bx(ix) + gx1 * bx(MIN(nx, ix+1))
-      by_p(ip) = gx0 * by(ix) + gx1 * by(MIN(nx, ix+1))
-      bz_p(ip) = gx0 * bz(ix) + gx1 * bz(MIN(nx, ix+1))
+      ! But need to handle boundary: interpolate between (ix-1) and (ix) 
+      ! if we added 1 to ix
+      ex_p(ip) = gx0 * ex(ix) + gx1 * ex(MIN(ix+1, nx))
+      ey_p(ip) = gx0 * ey(ix) + gx1 * ey(MIN(ix+1, nx))
+      ez_p(ip) = gx0 * ez(ix) + gx1 * ez(MIN(ix+1, nx))
+      bx_p(ip) = gx0 * bx(ix) + gx1 * bx(MIN(ix+1, nx))
+      by_p(ip) = gx0 * by(ix) + gx1 * by(MIN(ix+1, nx))
+      bz_p(ip) = gx0 * bz(ix) + gx1 * bz(MIN(ix+1, nx))
     END DO
     !$ACC END PARALLEL LOOP
     
@@ -241,42 +243,48 @@ CONTAINS
       cell_x_new = (pos_x_new(ip) - x_min) * idx
       
       ! =========================================================
-      ! EDGE-CENTERED CONVENTION (matching 2D GPU exactly)
+      ! CELL-CENTERED CONVENTION (matching CPU exactly)
       ! =========================================================
-      ix_old = INT(cell_x_old) + 1  ! 1-based
-      ix_new = INT(cell_x_new) + 1
+      ! Round to nearest cell (0-based), then convert to 1-based
+      ix_old = FLOOR(cell_x_old + 0.5_num) + 1
+      ix_new = FLOOR(cell_x_new + 0.5_num) + 1
       
-      ! Fractional position within cell [0, 1)
-      frac_old = cell_x_old - REAL(ix_old - 1, num)
-      frac_new = cell_x_new - REAL(ix_new - 1, num)
+      ! Fractional position relative to cell CENTER
+      ! frac > 0: particle is LEFT of cell center
+      ! frac < 0: particle is RIGHT of cell center
+      ! Range: [-0.5, 0.5)
+      frac_old = REAL(ix_old - 1, num) - cell_x_old
+      frac_new = REAL(ix_new - 1, num) - cell_x_new
       
       ! Cell displacement
       dcell = ix_new - ix_old
       
-      ! Use old cell as reference (clamped like 2D)
-      ix_base = MAX(1, MIN(ix_old, nx))
+      ! Use old cell as reference
+      ix_base = ix_old
       
       ! =========================================================
-      ! EDGE-CENTERED shape functions (matching 2D GPU exactly)
-      ! For frac in [0, 1): wold(0) = 1 - frac, wold(1) = frac
+      ! EPOCH TRIANGULAR SHAPE FUNCTIONS (from triangle/gx.inc)
+      ! cf2 = cell_frac_x**2
+      ! gx(-1) = 0.25 + cf2 + cell_frac_x  (sum = 2.0)
+      ! gx( 0) = 1.5 - 2.0 * cf2
+      ! gx( 1) = 0.25 + cf2 - cell_frac_x
       ! =========================================================
-      wold(-1) = 0.0_num
-      wold(0) = 1.0_num - frac_old
-      wold(1) = frac_old
+      cf2_old = frac_old * frac_old
+      wold(-1) = 0.25_num + cf2_old + frac_old
+      wold(0) = 1.5_num - 2.0_num * cf2_old
+      wold(1) = 0.25_num + cf2_old - frac_old
       wold(2) = 0.0_num
       
-      ! Shape functions at new position (shifted by dcell)
+      ! Shape functions at new position (from triangle/hx_dcell.inc)
+      cf2_new = frac_new * frac_new
       wnew(-1) = 0.0_num
-      wnew(0) = 0.0_num
-      wnew(1) = 0.0_num
-      wnew(2) = 0.0_num
-      IF (dcell >= -1 .AND. dcell <= 1) THEN
-        wnew(dcell) = 1.0_num - frac_new
-        wnew(dcell + 1) = frac_new
-      ELSE
-        ! Particle moved too far
-        wnew(0) = 1.0_num - frac_new
-        wnew(1) = frac_new
+      wnew(dcell - 1) = 0.25_num + cf2_new + frac_new
+      wnew(dcell) = 1.5_num - 2.0_num * cf2_new
+      wnew(dcell + 1) = 0.25_num + cf2_new - frac_new
+      IF (dcell - 1 > 2 .OR. dcell + 1 < -1) THEN
+        ! Particle moved too far, reset to simple
+        wnew = 0.0_num
+        wnew(0) = 1.0_num
       END IF
       
       ! Shape function difference
@@ -289,9 +297,10 @@ CONTAINS
       vy = py(ip) * ipart_mc * igamma * c
       vz = pz(ip) * ipart_mc * igamma * c
       
-      ! Current factors - NO fac (matching 2D GPU exactly)
-      qw_idt = charge * weight(ip) * idt  ! For Jx
-      qw_idx = charge * weight(ip) * idx  ! For Jy, Jz
+      ! Current factors - use fac=0.5 for triangular shape
+      ! With linear shape functions (sum=1.0), this gives effective norm 0.5
+      qw_idt = 0.5_num * charge * weight(ip) * idt  ! For Jx
+      qw_idx = 0.5_num * charge * weight(ip) * idx  ! For Jy, Jz
       
       ! Esirkepov Jx deposition: cumulative sum of -dw
       jx_accum = 0.0_num
