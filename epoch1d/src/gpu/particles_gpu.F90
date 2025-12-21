@@ -240,7 +240,7 @@ CONTAINS
       cell_x_old = (pos_x_old(ip) - x_min) * idx
       cell_x_new = (pos_x_new(ip) - x_min) * idx
       
-      ! Cell indices (using 1-based indexing like interpolation)
+      ! Cell indices (1-based indexing)
       ix_old = INT(cell_x_old) + 1
       ix_new = INT(cell_x_new) + 1
       
@@ -281,11 +281,10 @@ CONTAINS
       vy = py(ip) * ipart_mc * igamma * c
       vz = pz(ip) * ipart_mc * igamma * c
       
-      ! Current factors
-      ! Note: 1D requires fac=0.5 because there's no transverse shape function
-      ! In 2D/3D, the transverse shape function provides this normalization
-      qw_idt = 0.5_num * charge * weight(ip) * idt  ! For Jx (charge conservation)
-      qw_idx = 0.5_num * charge * weight(ip) * idx  ! For Jy, Jz (velocity-based)
+      ! Current factors for 1D Esirkepov
+      ! Additional normalization needed for 1D - empirically determined
+      qw_idt = 0.25_num * charge * weight(ip) * idt  ! For Jx (charge conservation)
+      qw_idx = 0.25_num * charge * weight(ip) * idx  ! For Jy, Jz (velocity-based)
       
       ! Esirkepov Jx deposition: cumulative sum of -dw
       ! This ensures exact charge conservation
