@@ -263,33 +263,39 @@ CONTAINS
       ix_base = ix_old
       
       ! =========================================================
-      ! EPOCH TRIANGULAR SHAPE FUNCTIONS (from triangle/gx.inc)
-      ! cf2 = cell_frac_x**2
-      ! gx(-1) = 0.25 + cf2 + cell_frac_x  (sum = 2.0)
-      ! gx( 0) = 1.5 - 2.0 * cf2
-      ! gx( 1) = 0.25 + cf2 - cell_frac_x
+      ! Simple linear shape functions (cell-centered)
+      ! For frac in [-0.5, 0.5]:
+      !   frac > 0: particle LEFT of center, weight on cell and left neighbor
+      !   frac < 0: particle RIGHT of center, weight on cell and right neighbor
+      ! These sum to 1.0, with fac=0.5 giving effective norm 0.5
       ! =========================================================
-      cf2_old = frac_old * frac_old
-      wold(-1) = 0.25_num + cf2_old + frac_old
-      wold(0) = 1.5_num - 2.0_num * cf2_old
-      wold(1) = 0.25_num + cf2_old - frac_old
+      wold(-1) = 0.0_num
+      wold(0) = 0.0_num
+      wold(1) = 0.0_num
       wold(2) = 0.0_num
+      IF (frac_old >= 0.0_num) THEN
+        wold(-1) = frac_old
+        wold(0) = 1.0_num - frac_old
+      ELSE
+        wold(0) = 1.0_num + frac_old
+        wold(1) = -frac_old
+      END IF
       
-      ! Shape functions at new position (from triangle/hx_dcell.inc)
-      ! Initialize all to zero first
+      ! Shape functions at new position (shifted by dcell)
       wnew(-1) = 0.0_num
       wnew(0) = 0.0_num
       wnew(1) = 0.0_num
       wnew(2) = 0.0_num
-      
-      cf2_new = frac_new * frac_new
       IF (dcell >= -1 .AND. dcell <= 1) THEN
-        ! Normal case: particle moved at most 1 cell
-        IF (dcell - 1 >= -1) wnew(dcell - 1) = 0.25_num + cf2_new + frac_new
-        IF (dcell >= -1 .AND. dcell <= 2) wnew(dcell) = 1.5_num - 2.0_num * cf2_new
-        IF (dcell + 1 <= 2) wnew(dcell + 1) = 0.25_num + cf2_new - frac_new
+        IF (frac_new >= 0.0_num) THEN
+          wnew(dcell - 1) = frac_new
+          wnew(dcell) = 1.0_num - frac_new
+        ELSE
+          wnew(dcell) = 1.0_num + frac_new
+          wnew(dcell + 1) = -frac_new
+        END IF
       ELSE
-        ! Particle moved too far, use simple deposition at new cell
+        ! Particle moved too far
         wnew(0) = 1.0_num
       END IF
       
