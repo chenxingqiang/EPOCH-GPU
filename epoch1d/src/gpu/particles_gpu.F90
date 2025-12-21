@@ -158,14 +158,27 @@ CONTAINS
     !$ACC& PRESENT(bx_p(1:n_particles), by_p(1:n_particles), bz_p(1:n_particles)) &
     !$ACC& PRIVATE(cell_x, ix, gx0, gx1)
     DO ip = 1, n_particles
-      ! Compute cell index and local coordinate
+      ! Compute cell index using CELL-CENTERED convention (matching CPU and deposition)
+      ! Round to nearest cell center, then convert to 1-based
       cell_x = (pos_x(ip) - x_min) * idx
-      ix = INT(cell_x)
-      gx1 = cell_x - REAL(ix, num)
-      gx0 = 1.0_num - gx1
+      ix = FLOOR(cell_x + 0.5_num) + 1  ! Cell-centered, 1-based
       
-      ! Ensure valid index
-      ix = MAX(1, MIN(ix, nx-1))
+      ! Fractional position relative to cell center
+      ! frac > 0: particle is LEFT of center, frac < 0: particle is RIGHT of center
+      gx1 = REAL(ix - 1, num) - cell_x  ! This is 'frac' in CPU convention
+      
+      ! Shape functions for cell-centered: gx(-1)=max(0,frac), gx(0)=1-|frac|, gx(1)=max(0,-frac)
+      ! But for interpolation we use two points: current cell and neighbor
+      IF (gx1 >= 0.0_num) THEN
+        ! Particle left of center: interpolate between (ix-1) and (ix)
+        gx0 = 1.0_num - gx1
+        ix = MAX(1, MIN(ix - 1, nx - 1))
+      ELSE
+        ! Particle right of center: interpolate between (ix) and (ix+1)
+        gx1 = -gx1
+        gx0 = 1.0_num - gx1
+        ix = MAX(1, MIN(ix, nx - 1))
+      END IF
       
       ! Linear interpolation
       ex_p(ip) = gx0 * ex(ix) + gx1 * ex(ix+1)
