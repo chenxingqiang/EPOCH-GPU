@@ -110,9 +110,11 @@ CONTAINS
     ! Transfer field arrays to GPU
     !$ACC ENTER DATA COPYIN(ex, ey, ez, bx, by, bz)
     
-    ! Transfer current arrays to GPU (already zeroed by caller in epoch1d.F90)
-    ! Use COPYIN to copy the zeroed values from CPU to GPU
-    !$ACC ENTER DATA COPYIN(jx, jy, jz)
+    ! Transfer current arrays to GPU
+    ! Note: The caller (epoch1d.F90) clears jx,jy,jz before calling us
+    ! Use CREATE to allocate on GPU, then UPDATE DEVICE to copy zeroed values
+    !$ACC ENTER DATA CREATE(jx, jy, jz)
+    !$ACC UPDATE DEVICE(jx, jy, jz)
     
     DO ispecies = 1, n_species
       np = species_soa(ispecies)%count
