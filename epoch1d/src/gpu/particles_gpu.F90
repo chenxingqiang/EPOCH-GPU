@@ -158,35 +158,24 @@ CONTAINS
     !$ACC& PRESENT(bx_p(1:n_particles), by_p(1:n_particles), bz_p(1:n_particles)) &
     !$ACC& PRIVATE(cell_x, ix, gx0, gx1)
     DO ip = 1, n_particles
-      ! Compute cell index using CELL-CENTERED convention (matching CPU and deposition)
-      ! Round to nearest cell center, then convert to 1-based
+      ! Simple linear interpolation (edge-centered, like before)
       cell_x = (pos_x(ip) - x_min) * idx
-      ix = FLOOR(cell_x + 0.5_num) + 1  ! Cell-centered, 1-based
+      ix = INT(cell_x)
+      gx1 = cell_x - REAL(ix, num)
+      gx0 = 1.0_num - gx1
       
-      ! Fractional position relative to cell center
-      ! frac > 0: particle is LEFT of center, frac < 0: particle is RIGHT of center
-      gx1 = REAL(ix - 1, num) - cell_x  ! This is 'frac' in CPU convention
+      ! Ensure valid 1-based index
+      ix = MAX(1, MIN(ix + 1, nx))
       
-      ! Shape functions for cell-centered: gx(-1)=max(0,frac), gx(0)=1-|frac|, gx(1)=max(0,-frac)
-      ! But for interpolation we use two points: current cell and neighbor
-      IF (gx1 >= 0.0_num) THEN
-        ! Particle left of center: interpolate between (ix-1) and (ix)
-        gx0 = 1.0_num - gx1
-        ix = MAX(1, MIN(ix - 1, nx - 1))
-      ELSE
-        ! Particle right of center: interpolate between (ix) and (ix+1)
-        gx1 = -gx1
-        gx0 = 1.0_num - gx1
-        ix = MAX(1, MIN(ix, nx - 1))
-      END IF
-      
-      ! Linear interpolation
-      ex_p(ip) = gx0 * ex(ix) + gx1 * ex(ix+1)
-      ey_p(ip) = gx0 * ey(ix) + gx1 * ey(ix+1)
-      ez_p(ip) = gx0 * ez(ix) + gx1 * ez(ix+1)
-      bx_p(ip) = gx0 * bx(ix) + gx1 * bx(ix+1)
-      by_p(ip) = gx0 * by(ix) + gx1 * by(ix+1)
-      bz_p(ip) = gx0 * bz(ix) + gx1 * bz(ix+1)
+      ! Linear interpolation between ix and ix+1
+      ! But need to handle boundary: interpolate between (ix-1) and (ix) 
+      ! if we added 1 to ix
+      ex_p(ip) = gx0 * ex(ix) + gx1 * ex(MIN(ix+1, nx))
+      ey_p(ip) = gx0 * ey(ix) + gx1 * ey(MIN(ix+1, nx))
+      ez_p(ip) = gx0 * ez(ix) + gx1 * ez(MIN(ix+1, nx))
+      bx_p(ip) = gx0 * bx(ix) + gx1 * bx(MIN(ix+1, nx))
+      by_p(ip) = gx0 * by(ix) + gx1 * by(MIN(ix+1, nx))
+      bz_p(ip) = gx0 * bz(ix) + gx1 * bz(MIN(ix+1, nx))
     END DO
     !$ACC END PARALLEL LOOP
     
@@ -309,9 +298,9 @@ CONTAINS
       vy = py(ip) * ipart_mc * igamma * c
       vz = pz(ip) * ipart_mc * igamma * c
       
-      ! Current factors - use fac = 0.5 for triangular shape in 1D
-      qw_idt = 0.5_num * charge * weight(ip) * idt  ! For Jx
-      qw_idx = 0.5_num * charge * weight(ip) * idx  ! For Jy, Jz
+      ! Current factors - no fac for 1D (like 2D which works correctly)
+      qw_idt = charge * weight(ip) * idt  ! For Jx
+      qw_idx = charge * weight(ip) * idx  ! For Jy, Jz
       
       ! Esirkepov Jx deposition: cumulative sum of -dw
       jx_accum = 0.0_num
