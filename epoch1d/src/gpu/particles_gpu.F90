@@ -240,22 +240,19 @@ CONTAINS
       cell_x_old = (pos_x_old(ip) - x_min) * idx
       cell_x_new = (pos_x_new(ip) - x_min) * idx
       
-      ! Cell indices (using cell-centered indexing)
-      ix_old = FLOOR(cell_x_old)
-      ix_new = FLOOR(cell_x_new)
+      ! Cell indices (using 1-based indexing like interpolation)
+      ix_old = INT(cell_x_old) + 1
+      ix_new = INT(cell_x_new) + 1
       
       ! Fractional positions within cell [0,1)
-      frac_old = cell_x_old - REAL(ix_old, num)
-      frac_new = cell_x_new - REAL(ix_new, num)
+      frac_old = cell_x_old - REAL(ix_old - 1, num)
+      frac_new = cell_x_new - REAL(ix_new - 1, num)
       
       ! Cell displacement (should be -1, 0, or +1 for CFL-stable simulations)
       dcell = ix_new - ix_old
       
-      ! Use old cell as reference
-      ix_base = ix_old
-      
-      ! Clamp to valid grid range (EPOCH grid is 0-indexed)
-      ix_base = MAX(0, MIN(ix_base, nx-1))
+      ! Use old cell as reference (1-based, clamped to physics cells)
+      ix_base = MAX(1, MIN(ix_old, nx))
       
       ! First-order (linear) shape functions at old position
       ! W(-1)=0, W(0)=1-frac, W(1)=frac for cell-centered

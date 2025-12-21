@@ -309,31 +309,31 @@ CONTAINS
       cell_y_new = (pos_y_new(ip) - y_min) * idy
       cell_z_new = (pos_z_new(ip) - z_min) * idz
       
-      ! Cell indices
-      ix_old = FLOOR(cell_x_old)
-      iy_old = FLOOR(cell_y_old)
-      iz_old = FLOOR(cell_z_old)
-      ix_new = FLOOR(cell_x_new)
-      iy_new = FLOOR(cell_y_new)
-      iz_new = FLOOR(cell_z_new)
+      ! Cell indices (using 1-based indexing like interpolation)
+      ix_old = INT(cell_x_old) + 1
+      iy_old = INT(cell_y_old) + 1
+      iz_old = INT(cell_z_old) + 1
+      ix_new = INT(cell_x_new) + 1
+      iy_new = INT(cell_y_new) + 1
+      iz_new = INT(cell_z_new) + 1
       
       ! Fractional positions
-      frac_x_old = cell_x_old - REAL(ix_old, num)
-      frac_y_old = cell_y_old - REAL(iy_old, num)
-      frac_z_old = cell_z_old - REAL(iz_old, num)
-      frac_x_new = cell_x_new - REAL(ix_new, num)
-      frac_y_new = cell_y_new - REAL(iy_new, num)
-      frac_z_new = cell_z_new - REAL(iz_new, num)
+      frac_x_old = cell_x_old - REAL(ix_old - 1, num)
+      frac_y_old = cell_y_old - REAL(iy_old - 1, num)
+      frac_z_old = cell_z_old - REAL(iz_old - 1, num)
+      frac_x_new = cell_x_new - REAL(ix_new - 1, num)
+      frac_y_new = cell_y_new - REAL(iy_new - 1, num)
+      frac_z_new = cell_z_new - REAL(iz_new - 1, num)
       
       ! Cell displacement
       dcellx = ix_new - ix_old
       dcelly = iy_new - iy_old
       dcellz = iz_new - iz_old
       
-      ! Use old cell as reference (EPOCH grid is 0-indexed)
-      ix_base = MAX(0, MIN(ix_old, nx-1))
-      iy_base = MAX(0, MIN(iy_old, ny-1))
-      iz_base = MAX(0, MIN(iz_old, nz-1))
+      ! Use old cell as reference (1-based, clamped to physics cells)
+      ix_base = MAX(1, MIN(ix_old, nx))
+      iy_base = MAX(1, MIN(iy_old, ny))
+      iz_base = MAX(1, MIN(iz_old, nz))
       
       ! First-order shape functions at old position
       wx_old = 0.0_num; wy_old = 0.0_num; wz_old = 0.0_num

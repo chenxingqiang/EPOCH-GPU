@@ -356,25 +356,25 @@ CONTAINS
       cell_x_new = (pos_x_new(ip) - x_min) * idx
       cell_y_new = (pos_y_new(ip) - y_min) * idy
       
-      ! Cell indices
-      ix_old = FLOOR(cell_x_old)
-      iy_old = FLOOR(cell_y_old)
-      ix_new = FLOOR(cell_x_new)
-      iy_new = FLOOR(cell_y_new)
+      ! Cell indices (using 1-based indexing like interpolation)
+      ix_old = INT(cell_x_old) + 1
+      iy_old = INT(cell_y_old) + 1
+      ix_new = INT(cell_x_new) + 1
+      iy_new = INT(cell_y_new) + 1
       
       ! Fractional positions within cell [0,1)
-      frac_x_old = cell_x_old - REAL(ix_old, num)
-      frac_y_old = cell_y_old - REAL(iy_old, num)
-      frac_x_new = cell_x_new - REAL(ix_new, num)
-      frac_y_new = cell_y_new - REAL(iy_new, num)
+      frac_x_old = cell_x_old - REAL(ix_old - 1, num)
+      frac_y_old = cell_y_old - REAL(iy_old - 1, num)
+      frac_x_new = cell_x_new - REAL(ix_new - 1, num)
+      frac_y_new = cell_y_new - REAL(iy_new - 1, num)
       
       ! Cell displacement
       dcellx = ix_new - ix_old
       dcelly = iy_new - iy_old
       
-      ! Use old cell as reference (EPOCH grid is 0-indexed)
-      ix_base = MAX(0, MIN(ix_old, nx-1))
-      iy_base = MAX(0, MIN(iy_old, ny-1))
+      ! Use old cell as reference (1-based, clamped to physics cells)
+      ix_base = MAX(1, MIN(ix_old, nx))
+      iy_base = MAX(1, MIN(iy_old, ny))
       
       ! First-order shape functions at old position
       wx_old = 0.0_num
