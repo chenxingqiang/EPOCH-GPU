@@ -370,11 +370,10 @@ CONTAINS
       dwy = wy_new - wy_old
       dwz = wz_new - wz_old
       
-      ! Current factor for 3D Esirkepov - include fac = 0.125 for 3D triangular shape
-      ! fac = (0.5)**c_ndims = 0.125 for 3D
-      ! Jx: -fac*q*w/dt * dwx * Sy_avg * Sz_avg (cumulative in x)
-      ! Jy: -fac*q*w/dt * dwy * Sx_avg * Sz_avg (cumulative in y)
-      ! Jz: -fac*q*w/dt * dwz * Sx_avg * Sy_avg (cumulative in z)
+      ! Current factor for 3D Esirkepov
+      ! Jx: -q*w/dt * dwx * Sy_avg * Sz_avg (cumulative in x)
+      ! Jy: -q*w/dt * dwy * Sx_avg * Sz_avg (cumulative in y)
+      ! Jz: -q*w/dt * dwz * Sx_avg * Sy_avg (cumulative in z)
       
       ! Esirkepov Jx deposition
       DO iz = -1, 2
@@ -384,7 +383,7 @@ CONTAINS
           jx_accum = 0.0_num
           DO ix = -1, 2
             IF (ix_base + ix < 1 - ng .OR. ix_base + ix > nx + ng) CYCLE
-            jx_accum = jx_accum - 0.125_num * charge * weight(ip) * idt * dwx(ix) * &
+            jx_accum = jx_accum - charge * weight(ip) * idt * dwx(ix) * &
                        (wy_old(iy) + 0.5_num * dwy(iy)) * &
                        (wz_old(iz) + 0.5_num * dwz(iz))
             !$ACC ATOMIC UPDATE
@@ -394,7 +393,7 @@ CONTAINS
         END DO
       END DO
       
-      ! Esirkepov Jy deposition (with fac = 0.125)
+      ! Esirkepov Jy deposition
       DO iz = -1, 2
         IF (iz_base + iz < 1 - ng .OR. iz_base + iz > nz + ng) CYCLE
         DO ix = -1, 2
@@ -402,7 +401,7 @@ CONTAINS
           jy_accum = 0.0_num
           DO iy = -1, 2
             IF (iy_base + iy < 1 - ng .OR. iy_base + iy > ny + ng) CYCLE
-            jy_accum = jy_accum - 0.125_num * charge * weight(ip) * idt * dwy(iy) * &
+            jy_accum = jy_accum - charge * weight(ip) * idt * dwy(iy) * &
                        (wx_old(ix) + 0.5_num * dwx(ix)) * &
                        (wz_old(iz) + 0.5_num * dwz(iz))
             !$ACC ATOMIC UPDATE
@@ -412,7 +411,7 @@ CONTAINS
         END DO
       END DO
       
-      ! Esirkepov Jz deposition (with fac = 0.125)
+      ! Esirkepov Jz deposition
       DO iy = -1, 2
         IF (iy_base + iy < 1 - ng .OR. iy_base + iy > ny + ng) CYCLE
         DO ix = -1, 2
@@ -420,7 +419,7 @@ CONTAINS
           jz_accum = 0.0_num
           DO iz = -1, 2
             IF (iz_base + iz < 1 - ng .OR. iz_base + iz > nz + ng) CYCLE
-            jz_accum = jz_accum - 0.125_num * charge * weight(ip) * idt * dwz(iz) * &
+            jz_accum = jz_accum - charge * weight(ip) * idt * dwz(iz) * &
                        (wx_old(ix) + 0.5_num * dwx(ix)) * &
                        (wy_old(iy) + 0.5_num * dwy(iy))
             !$ACC ATOMIC UPDATE

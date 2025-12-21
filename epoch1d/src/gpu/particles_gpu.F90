@@ -281,10 +281,9 @@ CONTAINS
       vy = py(ip) * ipart_mc * igamma * c
       vz = pz(ip) * ipart_mc * igamma * c
       
-      ! Current factors - use fac = 0.5 for triangular shape (like CPU)
-      ! fac = (0.5)**c_ndims = 0.5 for 1D
-      qw_idt = 0.5_num * charge * weight(ip) * idt  ! For Jx (charge conservation)
-      qw_idx = 0.5_num * charge * weight(ip) * idx  ! For Jy, Jz (velocity-based)
+      ! Current factors
+      qw_idt = charge * weight(ip) * idt  ! For Jx (charge conservation)
+      qw_idx = charge * weight(ip) * idx  ! For Jy, Jz (velocity-based)
       
       ! Esirkepov Jx deposition: cumulative sum of -dw
       ! This ensures exact charge conservation
