@@ -107,8 +107,16 @@ CONTAINS
     REAL(num), ALLOCATABLE :: pos_x_old(:)  ! For Esirkepov method
     REAL(num) :: charge, mass
     
-    ! Transfer field and current arrays to GPU
+    ! Transfer field arrays to GPU
     !$ACC ENTER DATA COPYIN(ex, ey, ez, bx, by, bz)
+    
+    ! Clear current arrays on CPU first (CRITICAL for correct physics!)
+    ! The CPU clears these at the start of each time step
+    jx = 0.0_num
+    jy = 0.0_num
+    jz = 0.0_num
+    
+    ! Transfer current arrays to GPU (now zeroed)
     !$ACC ENTER DATA COPYIN(jx, jy, jz)
     
     DO ispecies = 1, n_species
