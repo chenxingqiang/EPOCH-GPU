@@ -121,7 +121,9 @@ CONTAINS
     ! #endregion
     
     ! Transfer current arrays to GPU (now zeroed)
-    !$ACC ENTER DATA COPYIN(jx, jy, jz)
+    ! Use CREATE first, then UPDATE DEVICE to ensure zeroed values are copied
+    !$ACC ENTER DATA CREATE(jx, jy, jz)
+    !$ACC UPDATE DEVICE(jx, jy, jz)
     
     DO ispecies = 1, n_species
       np = species_soa(ispecies)%count
