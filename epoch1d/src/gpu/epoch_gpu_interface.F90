@@ -116,6 +116,10 @@ CONTAINS
     jy = 0.0_num
     jz = 0.0_num
     
+    ! #region agent log - Debug after clearing (H0)
+    WRITE(*,'(A,E12.4)') 'DEBUG_1D_H0: jx_max_after_clear_CPU = ', MAXVAL(ABS(jx))
+    ! #endregion
+    
     ! Transfer current arrays to GPU (now zeroed)
     !$ACC ENTER DATA COPYIN(jx, jy, jz)
     
@@ -158,9 +162,9 @@ CONTAINS
                               ex_p, ey_p, ez_p, bx_p, by_p, bz_p, &
                               charge, mass, dt)
       
-      ! #region agent log - Debug before current deposition
+      ! #region agent log - Debug before current deposition (on GPU)
       !$ACC UPDATE HOST(jx)
-      WRITE(*,'(A,E12.4)') 'DEBUG_1D_H1: jx_max_before = ', MAXVAL(ABS(jx))
+      WRITE(*,'(A,E12.4)') 'DEBUG_1D_H1: jx_max_on_GPU_before_deposit = ', MAXVAL(ABS(jx))
       ! #endregion
       
       ! Deposit current using Esirkepov charge-conserving method
