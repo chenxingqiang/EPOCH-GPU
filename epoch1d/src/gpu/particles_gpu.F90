@@ -263,25 +263,29 @@ CONTAINS
       ix_base = ix_old
       
       ! =========================================================
-      ! EPOCH TRIANGULAR SHAPE FUNCTIONS (from triangle/gx.inc)
-      ! cf2 = cell_frac_x**2
-      ! gx(-1) = 0.25 + cf2 + cell_frac_x
-      ! gx( 0) = 1.5 - 2.0 * cf2
-      ! gx( 1) = 0.25 + cf2 - cell_frac_x
-      ! Note: These sum to 2.0, not 1.0!
+      ! Simple linear shape functions (cell-centered)
+      ! For frac in [-0.5, 0.5]:
+      !   frac > 0: particle LEFT of center, weight on cell and left neighbor
+      !   frac < 0: particle RIGHT of center, weight on cell and right neighbor
       ! =========================================================
       wold = 0.0_num
-      cf2_old = frac_old * frac_old
-      wold(-1) = 0.25_num + cf2_old + frac_old
-      wold(0) = 1.5_num - 2.0_num * cf2_old
-      wold(1) = 0.25_num + cf2_old - frac_old
+      IF (frac_old >= 0.0_num) THEN
+        wold(-1) = frac_old
+        wold(0) = 1.0_num - frac_old
+      ELSE
+        wold(0) = 1.0_num + frac_old
+        wold(1) = -frac_old
+      END IF
       
-      ! Shape functions at new position (from triangle/hx_dcell.inc)
+      ! Shape functions at new position (shifted by dcell)
       wnew = 0.0_num
-      cf2_new = frac_new * frac_new
-      wnew(dcell - 1) = 0.25_num + cf2_new + frac_new
-      wnew(dcell) = 1.5_num - 2.0_num * cf2_new
-      wnew(dcell + 1) = 0.25_num + cf2_new - frac_new
+      IF (frac_new >= 0.0_num) THEN
+        wnew(dcell - 1) = frac_new
+        wnew(dcell) = 1.0_num - frac_new
+      ELSE
+        wnew(dcell) = 1.0_num + frac_new
+        wnew(dcell + 1) = -frac_new
+      END IF
       
       ! Shape function difference
       dw = wnew - wold
