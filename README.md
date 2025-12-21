@@ -30,11 +30,13 @@ a fully relativistic Particle-In-Cell code for plasma physics simulations.
 
 ## Supported Dimensions
 
-| Dimension | Status | GPU Kernels |
-|-----------|--------|-------------|
-| **epoch1d** | ✅ Ready | Field solver, Particle pusher, Current deposition |
-| **epoch2d** | ✅ Ready | Field solver, Particle pusher, Current deposition, Bilinear interpolation |
-| **epoch3d** | ✅ Ready | Field solver, Particle pusher, Current deposition, Trilinear interpolation |
+| Dimension | Status | GPU Kernels | Physics Validation |
+|-----------|--------|-------------|-------------------|
+| **epoch1d** | ✅ Ready | Field solver, Particle pusher, Current deposition | ⚠️ ~1.7x ratio vs CPU |
+| **epoch2d** | ✅ Verified | Field solver, Particle pusher, Current deposition, Bilinear interpolation | ✅ Physically correct |
+| **epoch3d** | ✅ Verified | Field solver, Particle pusher, Current deposition, Trilinear interpolation | ✅ Physically correct |
+
+> **Note**: 1D GPU shows approximately 1.7x amplitude ratio compared to CPU due to differences in shape function conventions. 2D and 3D are fully verified and produce physically correct results.
 
 ## Quick Start with GPU
 

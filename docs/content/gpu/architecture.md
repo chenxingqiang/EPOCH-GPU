@@ -156,25 +156,44 @@ Data residency is managed with OpenACC directives:
 
 ### Current Deposition Method
 
-EPOCH-GPU uses **velocity-based current deposition** for all dimensions (1D, 2D, 3D):
+EPOCH-GPU uses **Esirkepov charge-conserving current deposition** for all dimensions:
 
 ```fortran
-! Calculate velocity from relativistic momentum
-gamma = SQRT(1 + (p/mc)^2)
-v = p / (gamma * m)
+! Esirkepov method: J from particle displacement (charge-conserving)
+! 1. Compute shape functions at old and new positions
+! 2. Calculate shape function difference: dw = w_new - w_old
+! 3. Deposit Jx via cumulative sum (ensures div(J) = -d(rho)/dt)
 
-! Deposit current: j = q * n * v
-jx += weight * charge * vx / cell_volume
-jy += weight * charge * vy / cell_volume
-jz += weight * charge * vz / cell_volume
+! Shape functions at old position
+wold(0) = 1 - frac_old
+wold(1) = frac_old
+
+! Shape functions at new position (shifted by dcell)
+wnew(dcell) = 1 - frac_new
+wnew(dcell+1) = frac_new
+
+! Cumulative sum for Jx (Esirkepov)
+jx_accum = 0
+DO ix = -1, 2
+  jx_accum = jx_accum - qw_idt * dw(ix)
+  !$ACC ATOMIC UPDATE
+  jx(ix_base + ix) = jx(ix_base + ix) + jx_accum
+END DO
 ```
 
-**Why not Esirkepov (charge-conserving) method?**
+**Why Esirkepov method?**
 
-1. **Simplicity**: Velocity-based deposition is straightforward to implement and debug
-2. **Performance**: Fewer operations per particle; no need to track old positions
-3. **Sufficient accuracy**: For most PIC simulations, velocity-based deposition provides adequate results
-4. **Future work**: Esirkepov method can be added as an option for applications requiring strict charge conservation
+1. **Charge conservation**: Ensures ∇·J = -∂ρ/∂t exactly (no spurious charge accumulation)
+2. **Physical accuracy**: Critical for long-time simulations where charge errors accumulate
+3. **Consistency with CPU**: Matches EPOCH's original charge-conserving implementation
+
+**Dimension-specific configurations:**
+
+| Dimension | Indexing | Shape Functions | Normalization |
+|-----------|----------|-----------------|---------------|
+| **1D** | Cell-centered | Linear (sum=1) | fac = 0.5 |
+| **2D** | Edge-centered | Linear (sum=1) | No fac |
+| **3D** | Edge-centered | Linear (sum=1) | No fac |
 
 ### Unified Interface Design
 
