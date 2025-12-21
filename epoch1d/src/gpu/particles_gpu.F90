@@ -288,6 +288,19 @@ CONTAINS
       qw_idt = charge * weight(ip) * idt  ! For Jx (charge conservation)
       qw_idx = charge * weight(ip) * idx  ! For Jy, Jz (velocity-based)
       
+      ! #region agent log - Hypothesis A,B,D: Check current factors and shape functions
+      IF (ip == 1) THEN
+        OPEN(UNIT=99, FILE='/Users/xingqiangchen/epoch-gpu/.cursor/debug.log', &
+             STATUS='UNKNOWN', POSITION='APPEND', ACTION='WRITE')
+        WRITE(99,'(A,E15.7,A,E15.7,A,E15.7,A,E15.7,A,E15.7,A,E15.7,A,E15.7,A)') &
+          '{"hypothesisId":"A","location":"1d_deposit:288","message":"1D factors","data":{', &
+          '"charge":', charge, ',"weight":', weight(ip), ',"idt":', idt, &
+          ',"qw_idt":', qw_idt, ',"dw0":', dw(0), ',"dw1":', dw(1), &
+          ',"dw_sum":', dw(-1)+dw(0)+dw(1)+dw(2), '}}'
+        CLOSE(99)
+      END IF
+      ! #endregion
+      
       ! Esirkepov Jx deposition: cumulative sum of -dw
       ! This ensures exact charge conservation
       jx_accum = 0.0_num

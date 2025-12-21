@@ -416,6 +416,19 @@ CONTAINS
       qw_idt = charge * weight(ip) * idt  ! For Jx, Jy (charge conservation)
       qw_idxy = charge * weight(ip) * idx * idy  ! For Jz (velocity-based)
       
+      ! #region agent log - Hypothesis A,B,D: Check current factors for 2D comparison
+      IF (ip == 1) THEN
+        OPEN(UNIT=99, FILE='/Users/xingqiangchen/epoch-gpu/.cursor/debug.log', &
+             STATUS='UNKNOWN', POSITION='APPEND', ACTION='WRITE')
+        WRITE(99,'(A,E15.7,A,E15.7,A,E15.7,A,E15.7,A,E15.7,A,E15.7,A,E15.7,A)') &
+          '{"hypothesisId":"A","location":"2d_deposit:416","message":"2D factors","data":{', &
+          '"charge":', charge, ',"weight":', weight(ip), ',"idt":', idt, &
+          ',"qw_idt":', qw_idt, ',"dwx0":', dwx(0), ',"dwx1":', dwx(1), &
+          ',"dwx_sum":', dwx(-1)+dwx(0)+dwx(1)+dwx(2), '}}'
+        CLOSE(99)
+      END IF
+      ! #endregion
+      
       ! Esirkepov Jx deposition (cumulative in x)
       DO iy = -1, 2
         IF (iy_base + iy < 1 - ng .OR. iy_base + iy > ny + ng) CYCLE
