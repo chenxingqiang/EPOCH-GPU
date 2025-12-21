@@ -323,6 +323,14 @@ CONTAINS
       charge = species_list(ispecies)%charge
       mass = species_list(ispecies)%mass
       
+      ! #region agent log - Debug particle properties
+      IF (ispecies == 1) THEN
+        WRITE(*,'(A,I5,A,I10)') 'DEBUG_2D: species ', ispecies, ' np = ', INT(np)
+        WRITE(*,'(A,E15.7)') 'DEBUG_2D: charge = ', charge
+        WRITE(*,'(A,E15.7)') 'DEBUG_2D: mass = ', mass
+      END IF
+      ! #endregion
+      
       ! Allocate temporary arrays (like 1D)
       ALLOCATE(ex_p(np), ey_p(np), ez_p(np))
       ALLOCATE(bx_p(np), by_p(np), bz_p(np))
@@ -381,6 +389,17 @@ CONTAINS
     
     ! Sync current back to CPU for field update
     !$ACC UPDATE HOST(jx, jy, jz)
+    
+    ! #region agent log - Debug 2D current values
+    WRITE(*,'(A)') '=== 2D DEBUG OUTPUT ==='
+    WRITE(*,'(A,E15.7)') 'DEBUG_2D: jx_max = ', MAXVAL(ABS(jx))
+    WRITE(*,'(A,E15.7)') 'DEBUG_2D: jx_sum = ', SUM(jx)
+    WRITE(*,'(A,I10,A,I10)') 'DEBUG_2D: nx = ', nx, ', ny = ', ny
+    WRITE(*,'(A,I10)') 'DEBUG_2D: ng = ', ng
+    WRITE(*,'(A,E15.7,A,E15.7)') 'DEBUG_2D: dx = ', dx, ', dy = ', dy
+    WRITE(*,'(A,E15.7)') 'DEBUG_2D: dt = ', dt
+    WRITE(*,'(A,E15.7,A,E15.7)') 'DEBUG_2D: x_min = ', x_min, ', y_min = ', y_min
+    ! #endregion
     
     ! Clean up field arrays from GPU
     !$ACC EXIT DATA DELETE(ex, ey, ez, bx, by, bz)

@@ -119,6 +119,14 @@ CONTAINS
       charge = species_list(ispecies)%charge
       mass = species_list(ispecies)%mass
       
+      ! #region agent log - Debug particle properties
+      IF (ispecies == 1) THEN
+        WRITE(*,'(A,I5,A,I10)') 'DEBUG_1D: species ', ispecies, ' np = ', INT(np)
+        WRITE(*,'(A,E15.7)') 'DEBUG_1D: charge = ', charge
+        WRITE(*,'(A,E15.7)') 'DEBUG_1D: mass = ', mass
+      END IF
+      ! #endregion
+      
       ! Allocate temporary arrays
       ALLOCATE(ex_p(np), ey_p(np), ez_p(np))
       ALLOCATE(bx_p(np), by_p(np), bz_p(np))
@@ -173,6 +181,17 @@ CONTAINS
     
     ! Sync current back to CPU for field update
     !$ACC UPDATE HOST(jx, jy, jz)
+    
+    ! #region agent log - Debug 1D current values
+    WRITE(*,'(A)') '=== 1D DEBUG OUTPUT ==='
+    WRITE(*,'(A,E15.7)') 'DEBUG_1D: jx_max = ', MAXVAL(ABS(jx))
+    WRITE(*,'(A,E15.7)') 'DEBUG_1D: jx_sum = ', SUM(jx)
+    WRITE(*,'(A,I10)') 'DEBUG_1D: nx = ', nx
+    WRITE(*,'(A,I10)') 'DEBUG_1D: ng = ', ng
+    WRITE(*,'(A,E15.7)') 'DEBUG_1D: dx = ', dx
+    WRITE(*,'(A,E15.7)') 'DEBUG_1D: dt = ', dt
+    WRITE(*,'(A,E15.7)') 'DEBUG_1D: x_min = ', x_min
+    ! #endregion
     
     ! Clean up field arrays from GPU
     !$ACC EXIT DATA DELETE(ex, ey, ez, bx, by, bz)
