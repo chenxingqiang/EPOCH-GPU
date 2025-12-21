@@ -282,8 +282,10 @@ CONTAINS
       vz = pz(ip) * ipart_mc * igamma * c
       
       ! Current factors
-      qw_idt = charge * weight(ip) * idt  ! For Jx (charge conservation)
-      qw_idx = charge * weight(ip) * idx  ! For Jy, Jz (velocity-based)
+      ! Note: 1D requires fac=0.5 because there's no transverse shape function
+      ! In 2D/3D, the transverse shape function provides this normalization
+      qw_idt = 0.5_num * charge * weight(ip) * idt  ! For Jx (charge conservation)
+      qw_idx = 0.5_num * charge * weight(ip) * idx  ! For Jy, Jz (velocity-based)
       
       ! Esirkepov Jx deposition: cumulative sum of -dw
       ! This ensures exact charge conservation
