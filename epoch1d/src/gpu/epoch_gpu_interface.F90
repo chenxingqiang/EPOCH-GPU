@@ -107,10 +107,6 @@ CONTAINS
     REAL(num), ALLOCATABLE :: pos_x_old(:)  ! For Esirkepov method
     REAL(num) :: charge, mass
     
-    ! #region agent log - Check incoming jx values (should be near zero)
-    WRITE(*,'(A,E15.7)') 'DEBUG_1D: jx_incoming_max = ', MAXVAL(ABS(jx))
-    ! #endregion
-    
     ! Transfer field and current arrays to GPU
     !$ACC ENTER DATA COPYIN(ex, ey, ez, bx, by, bz)
     !$ACC ENTER DATA COPYIN(jx, jy, jz)
@@ -123,16 +119,6 @@ CONTAINS
       charge = species_list(ispecies)%charge
       mass = species_list(ispecies)%mass
       
-      ! #region agent log - Debug particle properties
-      IF (ispecies == 1) THEN
-        WRITE(*,'(A,I5,A,I10)') 'DEBUG_1D: species ', ispecies, ' np = ', INT(np)
-        WRITE(*,'(A,E15.7)') 'DEBUG_1D: charge = ', charge
-        WRITE(*,'(A,E15.7)') 'DEBUG_1D: mass = ', mass
-        ! Get weight of first particle (need to sync from GPU first)
-        !$ACC UPDATE HOST(species_soa(ispecies)%weight(1:1))
-        WRITE(*,'(A,E15.7)') 'DEBUG_1D: weight(1) = ', species_soa(ispecies)%weight(1)
-      END IF
-      ! #endregion
       
       ! Allocate temporary arrays
       ALLOCATE(ex_p(np), ey_p(np), ez_p(np))
@@ -188,21 +174,6 @@ CONTAINS
     
     ! Sync current back to CPU for field update
     !$ACC UPDATE HOST(jx, jy, jz)
-    
-    ! #region agent log - Debug 1D current values
-    WRITE(*,'(A)') '=== 1D DEBUG OUTPUT ==='
-    WRITE(*,'(A,E15.7)') 'DEBUG_1D: jx_max = ', MAXVAL(ABS(jx))
-    WRITE(*,'(A,E15.7)') 'DEBUG_1D: jx_sum = ', SUM(jx)
-    WRITE(*,'(A,I10)') 'DEBUG_1D: nx = ', nx
-    WRITE(*,'(A,I10)') 'DEBUG_1D: ng = ', ng
-    WRITE(*,'(A,E15.7)') 'DEBUG_1D: dx = ', dx
-    WRITE(*,'(A,E15.7)') 'DEBUG_1D: dt = ', dt
-    WRITE(*,'(A,E15.7)') 'DEBUG_1D: x_min = ', x_min
-    ! Show jx distribution
-    WRITE(*,'(A,E15.7)') 'DEBUG_1D: jx(1) = ', jx(1)
-    WRITE(*,'(A,E15.7)') 'DEBUG_1D: jx(64) = ', jx(64)
-    WRITE(*,'(A,E15.7)') 'DEBUG_1D: jx(nx) = ', jx(nx)
-    ! #endregion
     
     ! Clean up field arrays from GPU
     !$ACC EXIT DATA DELETE(ex, ey, ez, bx, by, bz)
