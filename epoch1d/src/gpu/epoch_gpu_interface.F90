@@ -110,20 +110,9 @@ CONTAINS
     ! Transfer field arrays to GPU
     !$ACC ENTER DATA COPYIN(ex, ey, ez, bx, by, bz)
     
-    ! Clear current arrays on CPU first (CRITICAL for correct physics!)
-    ! The CPU clears these at the start of each time step
-    jx = 0.0_num
-    jy = 0.0_num
-    jz = 0.0_num
-    
-    ! #region agent log - Debug after clearing (H0)
-    WRITE(*,'(A,E12.4)') 'DEBUG_1D_H0: jx_max_after_clear_CPU = ', MAXVAL(ABS(jx))
-    ! #endregion
-    
-    ! Transfer current arrays to GPU (now zeroed)
-    ! Use CREATE first, then UPDATE DEVICE to ensure zeroed values are copied
-    !$ACC ENTER DATA CREATE(jx, jy, jz)
-    !$ACC UPDATE DEVICE(jx, jy, jz)
+    ! Transfer current arrays to GPU (already zeroed by caller in epoch1d.F90)
+    ! Use COPYIN to copy the zeroed values from CPU to GPU
+    !$ACC ENTER DATA COPYIN(jx, jy, jz)
     
     DO ispecies = 1, n_species
       np = species_soa(ispecies)%count
@@ -164,11 +153,6 @@ CONTAINS
                               ex_p, ey_p, ez_p, bx_p, by_p, bz_p, &
                               charge, mass, dt)
       
-      ! #region agent log - Debug before current deposition (on GPU)
-      !$ACC UPDATE HOST(jx)
-      WRITE(*,'(A,E12.4)') 'DEBUG_1D_H1: jx_max_on_GPU_before_deposit = ', MAXVAL(ABS(jx))
-      ! #endregion
-      
       ! Deposit current using Esirkepov charge-conserving method
       ! Uses old positions (pos_x_old) and new positions (pos_x)
       CALL deposit_current_gpu(np, &
@@ -193,12 +177,6 @@ CONTAINS
     
     ! Sync current back to CPU for field update
     !$ACC UPDATE HOST(jx, jy, jz)
-    
-    ! #region agent log - Debug after current deposition (H2)
-    WRITE(*,'(A,E12.4)') 'DEBUG_1D_H2: jx_max_after = ', MAXVAL(ABS(jx))
-    WRITE(*,'(A,E12.4)') 'DEBUG_1D_H2: jx_sum = ', SUM(jx)
-    WRITE(*,'(A,E12.4,A,E12.4,A,E12.4)') 'DEBUG_1D_H2: jx(1)=', jx(1), ' jx(64)=', jx(64), ' jx(nx)=', jx(nx)
-    ! #endregion
     
     ! Clean up field arrays from GPU
     !$ACC EXIT DATA DELETE(ex, ey, ez, bx, by, bz)
