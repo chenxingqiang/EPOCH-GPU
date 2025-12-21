@@ -158,24 +158,40 @@ CONTAINS
     !$ACC& PRESENT(bx_p(1:n_particles), by_p(1:n_particles), bz_p(1:n_particles)) &
     !$ACC& PRIVATE(cell_x, ix, gx0, gx1)
     DO ip = 1, n_particles
-      ! Simple linear interpolation (edge-centered, like before)
+      ! Cell-centered interpolation (matching current deposition convention)
       cell_x = (pos_x(ip) - x_min) * idx
-      ix = INT(cell_x)
-      gx1 = cell_x - REAL(ix, num)
-      gx0 = 1.0_num - gx1
       
-      ! Ensure valid 1-based index
-      ix = MAX(1, MIN(ix + 1, nx))
+      ! Round to nearest cell center, then convert to 1-based
+      ix = FLOOR(cell_x + 0.5_num) + 1
       
-      ! Linear interpolation between ix and ix+1
-      ! But need to handle boundary: interpolate between (ix-1) and (ix) 
-      ! if we added 1 to ix
-      ex_p(ip) = gx0 * ex(ix) + gx1 * ex(MIN(ix+1, nx))
-      ey_p(ip) = gx0 * ey(ix) + gx1 * ey(MIN(ix+1, nx))
-      ez_p(ip) = gx0 * ez(ix) + gx1 * ez(MIN(ix+1, nx))
-      bx_p(ip) = gx0 * bx(ix) + gx1 * bx(MIN(ix+1, nx))
-      by_p(ip) = gx0 * by(ix) + gx1 * by(MIN(ix+1, nx))
-      bz_p(ip) = gx0 * bz(ix) + gx1 * bz(MIN(ix+1, nx))
+      ! Fractional position relative to cell center
+      ! frac > 0: particle LEFT of center, frac < 0: particle RIGHT of center
+      gx1 = REAL(ix - 1, num) - cell_x
+      
+      ! Clamp to valid range
+      ix = MAX(1, MIN(ix, nx))
+      
+      ! Linear interpolation based on fractional position
+      IF (gx1 >= 0.0_num) THEN
+        ! Particle left of center: interpolate between (ix-1) and (ix)
+        gx0 = 1.0_num - gx1
+        ex_p(ip) = gx1 * ex(MAX(1, ix-1)) + gx0 * ex(ix)
+        ey_p(ip) = gx1 * ey(MAX(1, ix-1)) + gx0 * ey(ix)
+        ez_p(ip) = gx1 * ez(MAX(1, ix-1)) + gx0 * ez(ix)
+        bx_p(ip) = gx1 * bx(MAX(1, ix-1)) + gx0 * bx(ix)
+        by_p(ip) = gx1 * by(MAX(1, ix-1)) + gx0 * by(ix)
+        bz_p(ip) = gx1 * bz(MAX(1, ix-1)) + gx0 * bz(ix)
+      ELSE
+        ! Particle right of center: interpolate between (ix) and (ix+1)
+        gx1 = -gx1
+        gx0 = 1.0_num - gx1
+        ex_p(ip) = gx0 * ex(ix) + gx1 * ex(MIN(nx, ix+1))
+        ey_p(ip) = gx0 * ey(ix) + gx1 * ey(MIN(nx, ix+1))
+        ez_p(ip) = gx0 * ez(ix) + gx1 * ez(MIN(nx, ix+1))
+        bx_p(ip) = gx0 * bx(ix) + gx1 * bx(MIN(nx, ix+1))
+        by_p(ip) = gx0 * by(ix) + gx1 * by(MIN(nx, ix+1))
+        bz_p(ip) = gx0 * bz(ix) + gx1 * bz(MIN(nx, ix+1))
+      END IF
     END DO
     !$ACC END PARALLEL LOOP
     
