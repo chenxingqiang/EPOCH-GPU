@@ -107,6 +107,10 @@ CONTAINS
     REAL(num), ALLOCATABLE :: pos_x_old(:)  ! For Esirkepov method
     REAL(num) :: charge, mass
     
+    ! #region agent log - Check incoming jx values (should be near zero)
+    WRITE(*,'(A,E15.7)') 'DEBUG_1D: jx_incoming_max = ', MAXVAL(ABS(jx))
+    ! #endregion
+    
     ! Transfer field and current arrays to GPU
     !$ACC ENTER DATA COPYIN(ex, ey, ez, bx, by, bz)
     !$ACC ENTER DATA COPYIN(jx, jy, jz)
