@@ -276,14 +276,20 @@ CONTAINS
       wold(2) = 0.0_num
       
       ! Shape functions at new position (from triangle/hx_dcell.inc)
-      cf2_new = frac_new * frac_new
+      ! Initialize all to zero first
       wnew(-1) = 0.0_num
-      wnew(dcell - 1) = 0.25_num + cf2_new + frac_new
-      wnew(dcell) = 1.5_num - 2.0_num * cf2_new
-      wnew(dcell + 1) = 0.25_num + cf2_new - frac_new
-      IF (dcell - 1 > 2 .OR. dcell + 1 < -1) THEN
-        ! Particle moved too far, reset to simple
-        wnew = 0.0_num
+      wnew(0) = 0.0_num
+      wnew(1) = 0.0_num
+      wnew(2) = 0.0_num
+      
+      cf2_new = frac_new * frac_new
+      IF (dcell >= -1 .AND. dcell <= 1) THEN
+        ! Normal case: particle moved at most 1 cell
+        IF (dcell - 1 >= -1) wnew(dcell - 1) = 0.25_num + cf2_new + frac_new
+        IF (dcell >= -1 .AND. dcell <= 2) wnew(dcell) = 1.5_num - 2.0_num * cf2_new
+        IF (dcell + 1 <= 2) wnew(dcell + 1) = 0.25_num + cf2_new - frac_new
+      ELSE
+        ! Particle moved too far, use simple deposition at new cell
         wnew(0) = 1.0_num
       END IF
       
