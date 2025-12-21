@@ -412,9 +412,10 @@ CONTAINS
       igamma = 1.0_num / gamma_rel
       vz = pz(ip) * ipart_mc * igamma * c
       
-      ! Esirkepov current factors (like 1D)
-      qw_idt = charge * weight(ip) * idt  ! For Jx, Jy (charge conservation)
-      qw_idxy = charge * weight(ip) * idx * idy  ! For Jz (velocity-based)
+      ! Esirkepov current factors - include fac = 0.25 for 2D triangular shape
+      ! fac = (0.5)**c_ndims = 0.25 for 2D
+      qw_idt = 0.25_num * charge * weight(ip) * idt  ! For Jx, Jy (charge conservation)
+      qw_idxy = 0.25_num * charge * weight(ip) * idx * idy  ! For Jz (velocity-based)
       
       ! Esirkepov Jx deposition (cumulative in x)
       DO iy = -1, 2
