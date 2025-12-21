@@ -186,15 +186,6 @@ CONTAINS
     ! Sync current back to CPU for field update
     !$ACC UPDATE HOST(jx, jy, jz)
     
-    ! #region agent log - Hypothesis C,E: Check final jx values
-    OPEN(UNIT=99, FILE='/Users/xingqiangchen/epoch-gpu/.cursor/debug.log', &
-         STATUS='UNKNOWN', POSITION='APPEND', ACTION='WRITE')
-    WRITE(99,'(A,E15.7,A,E15.7,A)') &
-      '{"hypothesisId":"C","location":"3d_interface:190","message":"3D jx after GPU","data":{', &
-      '"jx_max":', MAXVAL(ABS(jx)), ',"jx_min":', MINVAL(jx), '}}'
-    CLOSE(99)
-    ! #endregion
-    
     ! Clean up field arrays from GPU
     !$ACC EXIT DATA DELETE(ex, ey, ez, bx, by, bz)
     !$ACC EXIT DATA DELETE(jx, jy, jz)

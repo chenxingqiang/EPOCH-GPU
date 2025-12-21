@@ -375,19 +375,6 @@ CONTAINS
       ! Jy: q*w / (dt*dx*dz) * dwy * Sx * Sz
       ! Jz: q*w / (dt*dx*dy) * dwz * Sx * Sy
       
-      ! #region agent log - Hypothesis A,B,D: Check 3D current factors
-      IF (ip == 1) THEN
-        OPEN(UNIT=99, FILE='/Users/xingqiangchen/epoch-gpu/.cursor/debug.log', &
-             STATUS='UNKNOWN', POSITION='APPEND', ACTION='WRITE')
-        WRITE(99,'(A,E15.7,A,E15.7,A,E15.7,A,E15.7,A,E15.7,A,E15.7,A,E15.7,A)') &
-          '{"hypothesisId":"A","location":"3d_deposit:378","message":"3D factors","data":{', &
-          '"charge":', charge, ',"weight":', weight(ip), ',"idt":', idt, &
-          ',"idy":', idy, ',"idz":', idz, ',"dwx0":', dwx(0), &
-          ',"dwx_sum":', dwx(-1)+dwx(0)+dwx(1)+dwx(2), '}}'
-        CLOSE(99)
-      END IF
-      ! #endregion
-      
       ! Esirkepov Jx deposition
       DO iz = -1, 2
         IF (iz_base + iz < 1 - ng .OR. iz_base + iz > nz + ng) CYCLE
