@@ -286,18 +286,6 @@ CONTAINS
       qw_idt = 0.5_num * charge * weight(ip) * idt  ! For Jx (charge conservation)
       qw_idx = 0.5_num * charge * weight(ip) * idx  ! For Jy, Jz (velocity-based)
       
-      ! #region agent log - Debug shape function values for first particle
-      IF (ip == 1) THEN
-        WRITE(*,'(A,I5,A,I5,A,F8.4,A,F8.4)') &
-          'DEBUG_SF: ix_old=', ix_old, ' ix_new=', ix_new, &
-          ' frac_old=', frac_old, ' frac_new=', frac_new
-        WRITE(*,'(A,4F10.6)') 'DEBUG_SF: wold = ', wold(-1), wold(0), wold(1), wold(2)
-        WRITE(*,'(A,4F10.6)') 'DEBUG_SF: wnew = ', wnew(-1), wnew(0), wnew(1), wnew(2)
-        WRITE(*,'(A,4F10.6)') 'DEBUG_SF: dw   = ', dw(-1), dw(0), dw(1), dw(2)
-        WRITE(*,'(A,E12.4)') 'DEBUG_SF: qw_idt = ', qw_idt
-      END IF
-      ! #endregion
-      
       ! Esirkepov Jx deposition: cumulative sum of -dw
       ! This ensures exact charge conservation
       jx_accum = 0.0_num
