@@ -263,28 +263,28 @@ CONTAINS
       ix_base = ix_old
       
       ! =========================================================
-      ! Simple linear shape functions (cell-centered)
-      ! For frac in [-0.5, 0.5]:
-      !   frac > 0: particle LEFT of center, weight on cell and left neighbor
-      !   frac < 0: particle RIGHT of center, weight on cell and right neighbor
+      ! EPOCH TRIANGULAR SHAPE FUNCTIONS (from triangle/gx.inc)
+      ! cf2 = cell_frac_x**2
+      ! gx(-1) = 0.25 + cf2 + cell_frac_x  (sum = 2.0)
+      ! gx( 0) = 1.5 - 2.0 * cf2
+      ! gx( 1) = 0.25 + cf2 - cell_frac_x
       ! =========================================================
-      wold = 0.0_num
-      IF (frac_old >= 0.0_num) THEN
-        wold(-1) = frac_old
-        wold(0) = 1.0_num - frac_old
-      ELSE
-        wold(0) = 1.0_num + frac_old
-        wold(1) = -frac_old
-      END IF
+      cf2_old = frac_old * frac_old
+      wold(-1) = 0.25_num + cf2_old + frac_old
+      wold(0) = 1.5_num - 2.0_num * cf2_old
+      wold(1) = 0.25_num + cf2_old - frac_old
+      wold(2) = 0.0_num
       
-      ! Shape functions at new position (shifted by dcell)
-      wnew = 0.0_num
-      IF (frac_new >= 0.0_num) THEN
-        wnew(dcell - 1) = frac_new
-        wnew(dcell) = 1.0_num - frac_new
-      ELSE
-        wnew(dcell) = 1.0_num + frac_new
-        wnew(dcell + 1) = -frac_new
+      ! Shape functions at new position (from triangle/hx_dcell.inc)
+      cf2_new = frac_new * frac_new
+      wnew(-1) = 0.0_num
+      wnew(dcell - 1) = 0.25_num + cf2_new + frac_new
+      wnew(dcell) = 1.5_num - 2.0_num * cf2_new
+      wnew(dcell + 1) = 0.25_num + cf2_new - frac_new
+      IF (dcell - 1 > 2 .OR. dcell + 1 < -1) THEN
+        ! Particle moved too far, reset to simple
+        wnew = 0.0_num
+        wnew(0) = 1.0_num
       END IF
       
       ! Shape function difference
@@ -297,10 +297,10 @@ CONTAINS
       vy = py(ip) * ipart_mc * igamma * c
       vz = pz(ip) * ipart_mc * igamma * c
       
-      ! Current factors - linear shape functions sum to 1.0, so no fac needed
-      ! (EPOCH uses fac=0.5 with shape functions that sum to 2.0, giving 1.0)
-      qw_idt = charge * weight(ip) * idt  ! For Jx
-      qw_idx = charge * weight(ip) * idx  ! For Jy, Jz
+      ! Current factors - use fac=0.5 for triangular shape
+      ! With linear shape functions (sum=1.0), this gives effective norm 0.5
+      qw_idt = 0.5_num * charge * weight(ip) * idt  ! For Jx
+      qw_idx = 0.5_num * charge * weight(ip) * idx  ! For Jy, Jz
       
       ! Esirkepov Jx deposition: cumulative sum of -dw
       jx_accum = 0.0_num
