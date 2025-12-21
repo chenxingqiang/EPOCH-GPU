@@ -298,9 +298,9 @@ CONTAINS
       vy = py(ip) * ipart_mc * igamma * c
       vz = pz(ip) * ipart_mc * igamma * c
       
-      ! Current factors - no fac for 1D (like 2D which works correctly)
-      qw_idt = charge * weight(ip) * idt  ! For Jx
-      qw_idx = charge * weight(ip) * idx  ! For Jy, Jz
+      ! Current factors - use fac = 0.5 for 1D triangular shape
+      qw_idt = 0.5_num * charge * weight(ip) * idt  ! For Jx
+      qw_idx = 0.5_num * charge * weight(ip) * idx  ! For Jy, Jz
       
       ! Esirkepov Jx deposition: cumulative sum of -dw
       jx_accum = 0.0_num

@@ -100,7 +100,7 @@ CONTAINS
     REAL(num), INTENT(INOUT) :: bx(:), by(:), bz(:)
     REAL(num), INTENT(INOUT) :: jx(:), jy(:), jz(:)
     
-    INTEGER :: ispecies
+    INTEGER :: ispecies, i
     INTEGER(i8) :: np, ip
     REAL(num), ALLOCATABLE :: ex_p(:), ey_p(:), ez_p(:)
     REAL(num), ALLOCATABLE :: bx_p(:), by_p(:), bz_p(:)
@@ -110,11 +110,25 @@ CONTAINS
     ! Transfer field arrays to GPU
     !$ACC ENTER DATA COPYIN(ex, ey, ez, bx, by, bz)
     
-    ! Transfer current arrays to GPU
-    ! Note: The caller (epoch1d.F90) clears jx,jy,jz before calling us
-    ! Use CREATE to allocate on GPU, then UPDATE DEVICE to copy zeroed values
+    ! Transfer current arrays to GPU and ensure they are zeroed
     !$ACC ENTER DATA CREATE(jx, jy, jz)
-    !$ACC UPDATE DEVICE(jx, jy, jz)
+    
+    ! Explicitly zero the current arrays on GPU
+    !$ACC PARALLEL LOOP PRESENT(jx)
+    DO i = LBOUND(jx, 1), UBOUND(jx, 1)
+      jx(i) = 0.0_num
+    END DO
+    !$ACC END PARALLEL LOOP
+    !$ACC PARALLEL LOOP PRESENT(jy)
+    DO i = LBOUND(jy, 1), UBOUND(jy, 1)
+      jy(i) = 0.0_num
+    END DO
+    !$ACC END PARALLEL LOOP
+    !$ACC PARALLEL LOOP PRESENT(jz)
+    DO i = LBOUND(jz, 1), UBOUND(jz, 1)
+      jz(i) = 0.0_num
+    END DO
+    !$ACC END PARALLEL LOOP
     
     DO ispecies = 1, n_species
       np = species_soa(ispecies)%count
