@@ -100,7 +100,8 @@ CONTAINS
     REAL(num), INTENT(INOUT) :: bx(:), by(:), bz(:)
     REAL(num), INTENT(INOUT) :: jx(:), jy(:), jz(:)
     
-    INTEGER :: ispecies, i
+    INTEGER :: ispecies
+    INTEGER :: i  ! For GPU zeroing loops
     INTEGER(i8) :: np, ip
     REAL(num), ALLOCATABLE :: ex_p(:), ey_p(:), ez_p(:)
     REAL(num), ALLOCATABLE :: bx_p(:), by_p(:), bz_p(:)
