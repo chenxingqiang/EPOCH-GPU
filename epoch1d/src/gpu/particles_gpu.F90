@@ -216,7 +216,7 @@ CONTAINS
     INTEGER(i8) :: ip
     INTEGER :: ix_old, ix_new, ix_base, ix
     REAL(num) :: cell_x_old, cell_x_new, idx, idt
-    REAL(num) :: frac_old, frac_new
+    REAL(num) :: frac_old, frac_new, cf2_old, cf2_new
     REAL(num) :: gamma_rel, igamma, part_mc, ipart_mc
     REAL(num) :: vy, vz
     REAL(num) :: wold(-1:2), wnew(-1:2), dw(-1:2)
@@ -234,7 +234,7 @@ CONTAINS
     !$ACC& PRESENT(px(1:n_particles), py(1:n_particles), pz(1:n_particles)) &
     !$ACC& PRESENT(weight(1:n_particles), jx, jy, jz) &
     !$ACC& PRIVATE(cell_x_old, cell_x_new, ix_old, ix_new, frac_old, frac_new) &
-    !$ACC& PRIVATE(dcell, ix_base, wold, wnew, dw) &
+    !$ACC& PRIVATE(cf2_old, cf2_new, dcell, ix_base, wold, wnew, dw) &
     !$ACC& PRIVATE(gamma_rel, igamma, vy, vz, qw_idt, qw_idx) &
     !$ACC& PRIVATE(jx_accum, jy_contrib, jz_contrib)
     DO ip = 1, n_particles
@@ -263,30 +263,25 @@ CONTAINS
       ix_base = ix_old
       
       ! =========================================================
-      ! TRIANGULAR SHAPE FUNCTIONS (cell-centered)
-      ! For particle at distance 'frac' from cell center:
-      !   gx(-1) = frac     when frac > 0 (left neighbor)
-      !   gx(0)  = 1 - |frac|  (current cell)
-      !   gx(1)  = -frac    when frac < 0 (right neighbor)
+      ! EPOCH TRIANGULAR SHAPE FUNCTIONS (from triangle/gx.inc)
+      ! cf2 = cell_frac_x**2
+      ! gx(-1) = 0.25 + cf2 + cell_frac_x
+      ! gx( 0) = 1.5 - 2.0 * cf2
+      ! gx( 1) = 0.25 + cf2 - cell_frac_x
+      ! Note: These sum to 2.0, not 1.0!
       ! =========================================================
       wold = 0.0_num
-      IF (frac_old >= 0.0_num) THEN
-        wold(-1) = frac_old
-        wold(0) = 1.0_num - frac_old
-      ELSE
-        wold(0) = 1.0_num + frac_old
-        wold(1) = -frac_old
-      END IF
+      cf2_old = frac_old * frac_old
+      wold(-1) = 0.25_num + cf2_old + frac_old
+      wold(0) = 1.5_num - 2.0_num * cf2_old
+      wold(1) = 0.25_num + cf2_old - frac_old
       
-      ! Shape functions at new position (shifted by dcell)
+      ! Shape functions at new position (from triangle/hx_dcell.inc)
       wnew = 0.0_num
-      IF (frac_new >= 0.0_num) THEN
-        wnew(dcell - 1) = frac_new
-        wnew(dcell) = 1.0_num - frac_new
-      ELSE
-        wnew(dcell) = 1.0_num + frac_new
-        wnew(dcell + 1) = -frac_new
-      END IF
+      cf2_new = frac_new * frac_new
+      wnew(dcell - 1) = 0.25_num + cf2_new + frac_new
+      wnew(dcell) = 1.5_num - 2.0_num * cf2_new
+      wnew(dcell + 1) = 0.25_num + cf2_new - frac_new
       
       ! Shape function difference
       dw = wnew - wold
