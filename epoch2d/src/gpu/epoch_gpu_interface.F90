@@ -328,6 +328,9 @@ CONTAINS
         WRITE(*,'(A,I5,A,I10)') 'DEBUG_2D: species ', ispecies, ' np = ', INT(np)
         WRITE(*,'(A,E15.7)') 'DEBUG_2D: charge = ', charge
         WRITE(*,'(A,E15.7)') 'DEBUG_2D: mass = ', mass
+        ! Get weight of first particle (need to sync from GPU first)
+        !$ACC UPDATE HOST(species_soa(ispecies)%weight(1:1))
+        WRITE(*,'(A,E15.7)') 'DEBUG_2D: weight(1) = ', species_soa(ispecies)%weight(1)
       END IF
       ! #endregion
       
