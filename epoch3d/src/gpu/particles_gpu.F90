@@ -370,10 +370,10 @@ CONTAINS
       dwy = wy_new - wy_old
       dwz = wz_new - wz_old
       
-      ! Current factors for 3D Esirkepov (with cell area normalization)
-      ! Jx: q*w / (dt*dy*dz) * dwx * Sy * Sz
-      ! Jy: q*w / (dt*dx*dz) * dwy * Sx * Sz
-      ! Jz: q*w / (dt*dx*dy) * dwz * Sx * Sy
+      ! Current factor for 3D Esirkepov (same as 1D/2D)
+      ! Jx: -q*w/dt * dwx * Sy_avg * Sz_avg (cumulative in x)
+      ! Jy: -q*w/dt * dwy * Sx_avg * Sz_avg (cumulative in y)
+      ! Jz: -q*w/dt * dwz * Sx_avg * Sy_avg (cumulative in z)
       
       ! Esirkepov Jx deposition
       DO iz = -1, 2
@@ -383,7 +383,7 @@ CONTAINS
           jx_accum = 0.0_num
           DO ix = -1, 2
             IF (ix_base + ix < 1 - ng .OR. ix_base + ix > nx + ng) CYCLE
-            jx_accum = jx_accum - charge * weight(ip) * idt * idy * idz * dwx(ix) * &
+            jx_accum = jx_accum - charge * weight(ip) * idt * dwx(ix) * &
                        (wy_old(iy) + 0.5_num * dwy(iy)) * &
                        (wz_old(iz) + 0.5_num * dwz(iz))
             !$ACC ATOMIC UPDATE
@@ -401,7 +401,7 @@ CONTAINS
           jy_accum = 0.0_num
           DO iy = -1, 2
             IF (iy_base + iy < 1 - ng .OR. iy_base + iy > ny + ng) CYCLE
-            jy_accum = jy_accum - charge * weight(ip) * idt * idx * idz * dwy(iy) * &
+            jy_accum = jy_accum - charge * weight(ip) * idt * dwy(iy) * &
                        (wx_old(ix) + 0.5_num * dwx(ix)) * &
                        (wz_old(iz) + 0.5_num * dwz(iz))
             !$ACC ATOMIC UPDATE
@@ -419,7 +419,7 @@ CONTAINS
           jz_accum = 0.0_num
           DO iz = -1, 2
             IF (iz_base + iz < 1 - ng .OR. iz_base + iz > nz + ng) CYCLE
-            jz_accum = jz_accum - charge * weight(ip) * idt * idx * idy * dwz(iz) * &
+            jz_accum = jz_accum - charge * weight(ip) * idt * dwz(iz) * &
                        (wx_old(ix) + 0.5_num * dwx(ix)) * &
                        (wy_old(iy) + 0.5_num * dwy(iy))
             !$ACC ATOMIC UPDATE
