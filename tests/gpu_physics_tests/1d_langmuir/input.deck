@@ -22,10 +22,10 @@ end:boundaries
 
 
 begin:constant
-  # Plasma parameters
-  n0 = 1.0e25        # Electron density (m^-3)
-  Te = 100.0         # Electron temperature (eV)
-  perturbation = 0.01 # 1% density perturbation
+  # Plasma parameters - MATCHED to 2D test for comparison
+  n0 = 1.0e24        # Electron density (m^-3) - same as 2D
+  Te = 10.0          # Electron temperature (eV) - same as 2D
+  perturbation = 0.1 # 10% density perturbation - same as 2D
   
   # Derived quantities
   omega_p = sqrt(n0 * qe^2 / (me * epsilon0))
@@ -56,6 +56,7 @@ begin:output
   ex = always
   ey = always
   ez = always
+  jx = always
   
   number_density = always + species
   
