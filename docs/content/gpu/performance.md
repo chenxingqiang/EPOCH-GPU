@@ -75,6 +75,15 @@ One MPI rank, `nvfortran` 25.9, `-O3 -gpu=cc120`, double precision. The deck is 
 | 1024×1024 | 21.0 million | 32 ms/step | not run |
 
 On the 256×256 deck the final `Ex` is finite on both binaries and of the same order (a few MV/m). The cell values are not identical: the GPU deposit uses the linear Esirkepov weights plus the EPOCH triangle normalization, and the two runs load different random particles. The 2D particle kernels use SI `c = 299792458`, the same value as the 1D and 3D GPU kernels.
+The integrated 2D and 1D main loops do not keep that path on the device for the whole step:
+
+- `update_eb_fields_half` and `update_eb_fields_final` still run on the CPU. The comment in `epoch2d/src/epoch2d.F90` records that choice.
+- `gpu_push_all_species` copies `ex, ey, ez, bx, by, bz, jx, jy, jz` to the device on every step, then copies `jx, jy, jz` back so the CPU field update can see them.
+- For every species and every step it also copies `pos_x` and `pos_y` back to the host to build the old-position arrays, then copies those arrays to the device again. The per-particle field temporaries are allocated and freed on every call.
+
+A 2D grid of 1024×1024 holds about 75 MB of E, B, and J in double precision. Fifty million particles add about 1.6 GB of position traffic per step from that host round-trip (two arrays down, two arrays back, 8 bytes each). A PCIe 4.0 x16 link peaks near 32 GB/s, so that 1.6 GB takes at least 50 ms. The V100 push of the same 50 million particles is 50e6 / 5.30e9 ≈ 9 ms. PCIe 5.0 on an RTX 5090 raises the link rate and still leaves the copy in the step.
+
+Until the field update stays on the device and the old positions are kept there, the kernel rates above are a ceiling for hardware, not the speedup a user will time with `MPI_WTIME` around the run.
 
 1D has a separate limit: the GPU result differs from the CPU result by about a 1.7× amplitude ratio. Use 2D or 3D when comparing physics. Those two are the dimensions marked as physically checked.
 
@@ -130,6 +139,12 @@ Card power from the same Blackwell comparison table is 350 W (3090), 450 W (4090
 Four 32 GB cards sum to 128 GB of aggregate memory. Four 24 GB cards (3090 or 4090) sum to 96 GB. Either total is a set of separate address spaces. EPOCH already decomposes the domain with MPI, so each rank must fit its own patch, its particles, and the ghost cells in one GPU. A 2D patch splits cleanly that way; a single 3D array larger than one card does not become one allocation.
 
 `gpu_init_all` maps the local MPI rank onto `local_rank mod device_count`. Halo exchange still uses the host MPI path: `mpi_gpu.F90` is not linked into `epoch2d_gpu`. One rank per card is the supported layout. `CUDA_VISIBLE_DEVICES` can pin a process to a single device; the local-rank map covers the case where every rank sees every card.
+The production binary does not do this yet:
+
+- `gpu_init_all` calls `gpu_init(0)`. Every MPI rank selects device 0.
+- `epoch2d/src/gpu/mpi_gpu.F90` is not in `GPU_SRCFILES` in `epoch2d/Makefile.gpu`. The multi-GPU helpers are compiled only by the standalone GPU makefile under `epoch2d/src/gpu/`.
+
+Binding ranks with `CUDA_VISIBLE_DEVICES` is the available workaround, one visible GPU per process. Halo exchange then uses the normal host MPI path, because the GPU-aware exchange is not linked.
 
 GeForce interconnects follow the same split. The Ampere whitepaper describes 2-way NVLink on the RTX 3090 and states that 3-way and 4-way SLI are unsupported. The [RTX 4090](https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/rtx-4090/) and [RTX 5090](https://www.nvidia.com/en-us/geforce/graphics-cards/50-series/rtx-5090/) pages list NVLink as not available. A four-card node communicates over PCIe. For a large 2D problem the halo is a thin strip, so PCIe can carry it once device binding works. Four 5090s also draw 4 × 575 W from the GPUs alone.
 
