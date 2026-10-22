@@ -59,7 +59,7 @@ What the V100 timings do show is the particle kernels once the data is on the de
 
 Deposition is the slowest of the three. It uses `!$ACC ATOMIC UPDATE` on FP64 current arrays (`epoch2d/src/gpu/particles_gpu.F90`), so its rate is set by atomic throughput rather than by streaming bandwidth.
 
-On the 2D GPU build, a second-order Yee step with no CPML keeps the particle positions on the device. Old positions for Esirkepov are copied by a device kernel, and the gathered field arrays are allocated once. The Yee stencil itself runs on the device. Boundary conditions, lasers, and `current_finish` still run on the host, so each half-step copies the electric or magnetic field across PCIe, and the current is copied back after deposition and again after `current_finish`. Particle output copies the particles only on a dump step.
+On the 1D, 2D, and 3D GPU builds, a second-order Yee step with no CPML keeps the particle positions on the device. Old positions for Esirkepov are copied by a device kernel, and the gathered field arrays are allocated once. The Yee stencil itself runs on the device. Boundary conditions, lasers, and `current_finish` still run on the host, so each half-step copies the electric or magnetic field across PCIe, and the current is copied back after deposition and again after `current_finish`. Particle output copies the particles only on a dump step.
 
 That host work is still in the timed step. Moving-window runs, injectors, load balancing, collisions, ionisation, and migration refresh the device arrays from the host lists, because those operators edit the host particle list. A static periodic deck does not take that path.
 
@@ -74,16 +74,7 @@ One MPI rank, `nvfortran` 25.9, `-O3 -gpu=cc120`, double precision. The deck is 
 | 256×256 | 1.31 million | 3 ms/step | 161 ms/step |
 | 1024×1024 | 21.0 million | 32 ms/step | not run |
 
-On the 256×256 deck the final `Ex` is finite on both binaries and of the same order (a few MV/m). The cell values are not identical: the GPU deposit uses the linear Esirkepov weights plus the EPOCH triangle normalization, and the two runs load different random particles. The 2D particle kernels use SI `c = 299792458`, the same value as the 1D and 3D GPU kernels.
-The integrated 2D and 1D main loops do not keep that path on the device for the whole step:
-
-- `update_eb_fields_half` and `update_eb_fields_final` still run on the CPU. The comment in `epoch2d/src/epoch2d.F90` records that choice.
-- `gpu_push_all_species` copies `ex, ey, ez, bx, by, bz, jx, jy, jz` to the device on every step, then copies `jx, jy, jz` back so the CPU field update can see them.
-- For every species and every step it also copies `pos_x` and `pos_y` back to the host to build the old-position arrays, then copies those arrays to the device again. The per-particle field temporaries are allocated and freed on every call.
-
-A 2D grid of 1024×1024 holds about 75 MB of E, B, and J in double precision. Fifty million particles add about 1.6 GB of position traffic per step from that host round-trip (two arrays down, two arrays back, 8 bytes each). A PCIe 4.0 x16 link peaks near 32 GB/s, so that 1.6 GB takes at least 50 ms. The V100 push of the same 50 million particles is 50e6 / 5.30e9 ≈ 9 ms. PCIe 5.0 on an RTX 5090 raises the link rate and still leaves the copy in the step.
-
-Until the field update stays on the device and the old positions are kept there, the kernel rates above are a ceiling for hardware, not the speedup a user will time with `MPI_WTIME` around the run.
+On the 256×256 deck the final `Ex` is finite on both binaries and of the same order (a few MV/m). The cell values are not identical: the GPU deposit uses the linear Esirkepov weights plus the EPOCH triangle normalization, and the two runs load different random particles. The 1D, 2D, and 3D particle kernels use SI `c = 299792458`. The same resident Yee path was compiled with `-gpu=cc120` and run on this RTX 5090: a 1024-cell 1D plasma (40,960 particles) finished 30 steps in 0.09 s of core time, and a 48³ plasma (1.11 million particles) took about 10 ms/step between iteration 10 and iteration 20. Those two runs were not compared with a CPU binary.
 
 1D has a separate limit: the GPU result differs from the CPU result by about a 1.7× amplitude ratio. Use 2D or 3D when comparing physics. Those two are the dimensions marked as physically checked.
 

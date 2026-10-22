@@ -326,6 +326,7 @@ CONTAINS
       IF (.NOT.print_arrays) CYCLE
 
       IF (.NOT.any_written) THEN
+        IF (ASSOCIATED(epoch_before_output)) CALL epoch_before_output()
         ALLOCATE(array(1-ng:nx+ng,1-ng:ny+ng,1-ng:nz+ng))
         CALL create_subtypes
         any_written = .TRUE.
