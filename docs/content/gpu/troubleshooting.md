@@ -3,7 +3,7 @@ title: Troubleshooting
 linktitle: Troubleshooting
 toc: true
 type: docs
-date: "2025-12-19T00:00:00Z"
+date: "2026-10-22T00:00:00Z"
 draft: false
 menu:
   gpu:
@@ -70,8 +70,9 @@ nvidia-smi --query-gpu=compute_cap --format=csv
 
 **Solutions**:
 1. Reduce grid size or particle count
-2. Use single precision: `make -f Makefile.gpu DEFINE="-DSINGLE"`
-3. Check for memory leaks with `cuda-memcheck`
+2. Check for memory leaks with `cuda-memcheck`
+
+The GPU build is double precision. `DEFINE="-DSINGLE"` does not shrink the arrays: `Makefile.gpu` passes `-r8`, and the GPU kernels use `REAL64`.
 
 ### "illegal memory access"
 

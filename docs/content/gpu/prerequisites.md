@@ -3,7 +3,7 @@ title: Prerequisites & Environment Setup
 linktitle: Prerequisites
 toc: true
 type: docs
-date: "2025-12-20T00:00:00Z"
+date: "2026-10-22T00:00:00Z"
 draft: false
 menu:
   gpu:
@@ -28,6 +28,7 @@ EPOCH-GPU requires NVIDIA GPUs with **Compute Capability 7.0 or higher**:
 | RTX 2080 Ti | 7.5 | 11 GB | Turing | Development |
 | RTX 3080/3090 | 8.6 | 10/24 GB | Ampere | Development/testing |
 | RTX 4080/4090 | 8.9 | 16/24 GB | Ada Lovelace | Development/testing |
+| RTX 5090 | 12.0 | 32 GB | Blackwell | Unverified. Build with `GPU_CC=cc120` |
 | **RTX 6000 Ada** | 8.9 | 48 GB ECC | Ada Lovelace | **Professional flagship** |
 | **RTX A6000** | 8.6 | 48 GB ECC | Ampere | Professional production |
 | L40/L40S | 8.9 | 48 GB | Ada Lovelace | Production |
@@ -183,17 +184,9 @@ nvidia-smi
 # Studio driver recommended for mixed workloads
 ```
 
-### Performance Comparison (EPOCH-GPU Benchmarks)
+### Performance on other GPUs
 
-| GPU | 1D Push (1M) | 2D Push (1M) | 3D Push (500K) | Field Update (256²) |
-|-----|--------------|--------------|----------------|---------------------|
-| V100 (32GB) | 5.98B/s | 5.30B/s | 4.30B/s | 1.87B cells/s |
-| A100 (40GB) | ~7.5B/s* | ~6.8B/s* | ~5.5B/s* | ~2.5B cells/s* |
-| RTX A6000 | ~6.0B/s* | ~5.5B/s* | ~4.5B/s* | ~2.0B cells/s* |
-| RTX 4090 | ~7.0B/s* | ~6.5B/s* | ~5.2B/s* | ~2.3B cells/s* |
-| RTX 6000 Ada | ~7.2B/s* | ~6.7B/s* | ~5.4B/s* | ~2.4B cells/s* |
-
-*Estimated based on architecture specifications. V100 numbers are verified.
+Measured kernel rates in this repository are for the Tesla V100-PCIE-32GB only. Earlier estimates on this page scaled those rates to A100 and GeForce cards without the GeForce FP64 ratio (1/64 of FP32). Those estimates have been removed. Double-precision ceilings for the RTX 3090, RTX 4090, RTX 5090, and H100 SXM are in [Performance Tuning]({{< relref "performance.md" >}}).
 
 ### How to Check Your GPU
 

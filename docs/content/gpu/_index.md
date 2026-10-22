@@ -6,7 +6,7 @@ weight: 1
 
 # Page metadata.
 date: "2025-12-19T00:00:00Z"
-lastmod: "2025-12-19T00:00:00Z"
+lastmod: "2026-10-22T00:00:00Z"
 draft: false
 toc: true
 type: docs
@@ -27,7 +27,7 @@ enabling high-performance plasma physics simulations on modern GPU hardware.
 
 - **Full Dimensional Support**: GPU acceleration for 1D, 2D, and 3D simulations
 - **NVIDIA GPU Optimized**: Supports V100, A100, H100 and other CUDA-capable GPUs
-- **High Performance**: Up to 5+ billion particles/second on a single V100
+- **High Performance**: Up to 5+ billion particles/second for the Boris push on a single V100, with the data already on the device. Full-run speedup and GeForce FP64 limits are in [Performance Tuning]({{< relref "performance.md" >}}).
 - **OpenACC + CUDA Fortran**: Hybrid approach for maximum performance
 - **Drop-in Replacement**: Compatible with existing EPOCH input decks
 
