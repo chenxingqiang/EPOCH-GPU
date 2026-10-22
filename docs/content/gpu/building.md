@@ -3,7 +3,7 @@ title: Building EPOCH-GPU
 linktitle: Building
 toc: true
 type: docs
-date: "2025-12-19T00:00:00Z"
+date: "2026-10-22T00:00:00Z"
 draft: false
 menu:
   gpu:
@@ -81,6 +81,7 @@ Set `GPU_CC` according to your GPU:
 | RTX 3090/3090 Ti | 8.6 | `GPU_CC=cc86` | 24GB, good value |
 | RTX 3080/3080 Ti | 8.6 | `GPU_CC=cc86` | 10-12GB |
 | RTX 2080 Ti | 7.5 | `GPU_CC=cc75` | 11GB, minimum recommended |
+| RTX 5090 | 12.0 | `GPU_CC=cc120` | 32GB. Needs an `nvfortran` that accepts `cc120`. Not verified in this repository |
 
 ### Quick Reference by Architecture
 
@@ -100,6 +101,9 @@ make -f Makefile.gpu GPU_CC=cc89   # RTX 4090, RTX 6000 Ada
 
 # Hopper (Compute Capability 9.0)
 make -f Makefile.gpu GPU_CC=cc90   # H100
+
+# Blackwell GeForce (Compute Capability 12.0)
+make -f Makefile.gpu GPU_CC=cc120  # RTX 5090 (unverified)
 ```
 
 ### Auto-Detect GPU and Build
@@ -248,7 +252,7 @@ chmod +x build_all_gpu.sh
 | `GPU_CC` | GPU compute capability | cc70 | `GPU_CC=cc80` |
 | `MODE` | Build mode | release | `MODE=debug` |
 | `VERBOSE` | Show commands | 0 | `VERBOSE=1` |
-| `DEFINE` | Preprocessor flags | - | `DEFINE="-DSINGLE"` |
+| `DEFINE` | Preprocessor flags | - | `DEFINE="-DPARTICLE_ID"` |
 | `MPIF90` | MPI wrapper | mpif90 | `MPIF90=mpiifort` |
 
 ### Build Configurations
@@ -260,8 +264,8 @@ make -f Makefile.gpu GPU_CC=cc70 MODE=release
 # Debug build (with symbols, no optimization)
 make -f Makefile.gpu GPU_CC=cc70 MODE=debug
 
-# Single precision (saves memory)
-make -f Makefile.gpu GPU_CC=cc70 DEFINE="-DSINGLE"
+# `-DSINGLE` does not change precision. `num` is KIND(1.d0), Makefile.gpu
+# passes -r8, and the GPU kernels use REAL64. There is no FP32 GPU build.
 
 # With particle IDs
 make -f Makefile.gpu GPU_CC=cc70 DEFINE="-DPARTICLE_ID"

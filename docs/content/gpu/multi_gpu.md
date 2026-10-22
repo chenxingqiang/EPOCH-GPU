@@ -3,7 +3,7 @@ title: Multi-GPU Support
 linktitle: Multi-GPU
 toc: true
 type: docs
-date: "2025-12-19T00:00:00Z"
+date: "2026-10-22T00:00:00Z"
 draft: false
 menu:
   gpu:
@@ -11,8 +11,16 @@ menu:
     weight: 8
 ---
 
-EPOCH-GPU supports multi-GPU simulations using GPU-aware MPI for efficient 
-inter-GPU communication.
+The multi-GPU modules use GPU-aware MPI for inter-GPU communication. The production binary does not link them yet.
+
+## Current status of the production binary
+
+The `epoch2d_gpu` binary built by `epoch2d/Makefile.gpu` does not yet run one rank per GPU:
+
+- In 1D, 2D, and 3D, `gpu_init_all` calls `gpu_init(0)`, so every MPI rank selects device 0.
+- `epoch2d/src/gpu/mpi_gpu.F90` is not listed in `GPU_SRCFILES`. It is built only by the standalone makefile in `epoch2d/src/gpu/`. The 1D and 3D trees do not include that module.
+
+Until that changes, the practical way to use more than one GPU is to launch one process per card with `CUDA_VISIBLE_DEVICES` set so that each process sees a single device. Halo exchange then uses the host MPI path already in EPOCH. Four 32 GB cards provide 128 GB of aggregate memory as four domains, not one 128 GB allocation. The RTX 4090 and RTX 5090 have no NVLink; the RTX 3090 NVLink bridge is 2-way. See [Performance Tuning]({{< relref "performance.md" >}}) for the double-precision comparison.
 
 ## Features
 
