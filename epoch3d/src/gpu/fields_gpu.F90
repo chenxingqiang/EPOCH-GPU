@@ -43,9 +43,9 @@ CONTAINS
     INTEGER :: ix, iy, iz
     
     !$ACC PARALLEL LOOP COLLAPSE(3) PRESENT(ex, ey, ez, bx, by, bz, jx, jy, jz)
-    DO iz = 1, nz
-      DO iy = 1, ny
-        DO ix = 1, nx
+    DO iz = 0, nz
+      DO iy = 0, ny
+        DO ix = 0, nx
           ! Ex: dEx/dt = c^2 * (dBz/dy - dBy/dz) - Jx/eps0
           ex(ix, iy, iz) = ex(ix, iy, iz) &
               + cny * (bz(ix, iy, iz) - bz(ix, iy-1, iz)) &
@@ -90,9 +90,9 @@ CONTAINS
     INTEGER :: ix, iy, iz
     
     !$ACC PARALLEL LOOP COLLAPSE(3) PRESENT(ex, ey, ez, bx, by, bz)
-    DO iz = 1, nz
-      DO iy = 1, ny
-        DO ix = 1, nx
+    DO iz = 0, nz
+      DO iy = 0, ny
+        DO ix = 0, nx
           ! Bx: dBx/dt = dEy/dz - dEz/dy
           bx(ix, iy, iz) = bx(ix, iy, iz) &
               + hdtz * (ey(ix, iy, iz+1) - ey(ix, iy, iz)) &

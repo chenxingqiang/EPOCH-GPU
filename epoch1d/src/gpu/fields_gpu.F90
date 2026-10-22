@@ -43,7 +43,7 @@ CONTAINS
     INTEGER :: ix
     
     !$ACC PARALLEL LOOP PRESENT(ex, ey, ez, bx, by, bz, jx, jy, jz)
-    DO ix = 1, nx
+    DO ix = 0, nx
       ! Ex update (no curl contribution in 1D for Ex)
       ex(ix) = ex(ix) - fac * jx(ix)
       
@@ -77,7 +77,7 @@ CONTAINS
     INTEGER :: ix
     
     !$ACC PARALLEL LOOP PRESENT(ex, ey, ez, bx, by, bz)
-    DO ix = 1, nx
+    DO ix = 0, nx
       ! Bx: no curl contribution in 1D
       ! bx(ix) = bx(ix)
       

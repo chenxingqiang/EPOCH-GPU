@@ -190,7 +190,8 @@ fields_gpu.o: fields_gpu.F90 gpu_config.o
 particles_gpu.o: particles_gpu.F90 gpu_config.o
 particle_converter.o: particle_converter.F90 shared_data.o particle_data_gpu.o
 epoch_gpu_interface.o: epoch_gpu_interface.F90 gpu_config.o fields_gpu.o \
-  particles_gpu.o particle_data_gpu.o particle_converter.o shared_data.o
+  particles_gpu.o particle_data_gpu.o particle_converter.o shared_data.o \
+  fields.o boundary.o split_particle.o
 
 #---------------------------------------------------------------------------
 # All dependencies from original EPOCH Makefile

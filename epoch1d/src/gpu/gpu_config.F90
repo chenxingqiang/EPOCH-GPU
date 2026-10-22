@@ -38,6 +38,7 @@ MODULE gpu_config
   PUBLIC :: BLOCK_SIZE_X, BLOCK_SIZE_Y, BLOCK_SIZE_PARTICLE
   ! Wrapper functions for epoch1d integration
   PUBLIC :: gpu_init_all, gpu_finalize_all, gpu_check_available
+  PUBLIC :: gpu_device_for_rank
   
   !---------------------------------------------------------------------------
   ! GPU configuration parameters
@@ -296,11 +297,67 @@ CONTAINS
   !---------------------------------------------------------------------------
   !> @brief Initialize all GPU resources (wrapper for epoch1d integration)
   !---------------------------------------------------------------------------
+  INCLUDE 'gpu_device_for_rank.inc'
+
+  FUNCTION gpu_query_local_rank() RESULT(local_rank)
+    INTEGER :: local_rank
+    INTEGER :: env_stat, ios, ierr, shared_comm
+    CHARACTER(LEN=64) :: env
+    INCLUDE 'mpif.h'
+
+    local_rank = 0
+    env = ' '
+    CALL GET_ENVIRONMENT_VARIABLE('OMPI_COMM_WORLD_LOCAL_RANK', env, &
+        STATUS=env_stat)
+    IF (env_stat == 0) THEN
+      READ(env, *, IOSTAT=ios) local_rank
+      IF (ios == 0 .AND. local_rank >= 0) RETURN
+    END IF
+    env = ' '
+    CALL GET_ENVIRONMENT_VARIABLE('SLURM_LOCALID', env, STATUS=env_stat)
+    IF (env_stat == 0) THEN
+      READ(env, *, IOSTAT=ios) local_rank
+      IF (ios == 0 .AND. local_rank >= 0) RETURN
+    END IF
+    env = ' '
+    CALL GET_ENVIRONMENT_VARIABLE('MV2_COMM_WORLD_LOCAL_RANK', env, &
+        STATUS=env_stat)
+    IF (env_stat == 0) THEN
+      READ(env, *, IOSTAT=ios) local_rank
+      IF (ios == 0 .AND. local_rank >= 0) RETURN
+    END IF
+    env = ' '
+    CALL GET_ENVIRONMENT_VARIABLE('MPI_LOCALRANKID', env, STATUS=env_stat)
+    IF (env_stat == 0) THEN
+      READ(env, *, IOSTAT=ios) local_rank
+      IF (ios == 0 .AND. local_rank >= 0) RETURN
+    END IF
+
+    CALL MPI_COMM_SPLIT_TYPE(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0, &
+        MPI_INFO_NULL, shared_comm, ierr)
+    IF (ierr == 0) THEN
+      CALL MPI_COMM_RANK(shared_comm, local_rank, ierr)
+      CALL MPI_COMM_FREE(shared_comm, ierr)
+    ELSE
+      local_rank = 0
+    END IF
+  END FUNCTION gpu_query_local_rank
+
   SUBROUTINE gpu_init_all()
-    INTEGER :: ierr
-    
-    ierr = gpu_init(0)
-    
+    INTEGER :: ierr, ndev, local_rank, device_id
+
+    ndev = 0
+#ifdef GPU_ENABLED
+    ierr = cudaGetDeviceCount(ndev)
+    IF (ierr /= 0) ndev = 0
+#endif
+    local_rank = gpu_query_local_rank()
+    device_id = gpu_device_for_rank(local_rank, ndev)
+    ierr = gpu_init(device_id)
+    IF (ierr == 0) THEN
+      WRITE(*,*) 'EPOCH-GPU: local MPI rank', local_rank, &
+          ' using device', device_id, ' of', ndev
+    END IF
   END SUBROUTINE gpu_init_all
   
   
