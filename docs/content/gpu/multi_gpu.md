@@ -15,12 +15,11 @@ The multi-GPU modules use GPU-aware MPI for inter-GPU communication. The product
 
 ## Current status of the production binary
 
-The `epoch2d_gpu` binary built by `epoch2d/Makefile.gpu` does not yet run one rank per GPU:
+`gpu_init_all` in 1D, 2D, and 3D selects `local_rank mod device_count`. The local rank comes from `OMPI_COMM_WORLD_LOCAL_RANK`, `SLURM_LOCALID`, `MV2_COMM_WORLD_LOCAL_RANK`, `MPI_LOCALRANKID`, or an MPI shared-memory split. With one visible GPU per process, that index is 0.
 
-- In 1D, 2D, and 3D, `gpu_init_all` calls `gpu_init(0)`, so every MPI rank selects device 0.
-- `epoch2d/src/gpu/mpi_gpu.F90` is not listed in `GPU_SRCFILES`. It is built only by the standalone makefile in `epoch2d/src/gpu/`. The 1D and 3D trees do not include that module.
+`epoch2d/src/gpu/mpi_gpu.F90` is still not listed in `GPU_SRCFILES`. Field halos use the host MPI path inside the existing boundary routines. The 1D and 3D trees do not include that module.
 
-Until that changes, the practical way to use more than one GPU is to launch one process per card with `CUDA_VISIBLE_DEVICES` set so that each process sees a single device. Halo exchange then uses the host MPI path already in EPOCH. Four 32 GB cards provide 128 GB of aggregate memory as four domains, not one 128 GB allocation. The RTX 4090 and RTX 5090 have no NVLink; the RTX 3090 NVLink bridge is 2-way. See [Performance Tuning]({{< relref "performance.md" >}}) for the double-precision comparison.
+Launch one MPI rank per GPU. When every rank can see every card, the local rank selects the device. `CUDA_VISIBLE_DEVICES` still works when each process should see only one card. Halo exchange uses the host MPI path already in EPOCH. Four 32 GB cards provide 128 GB of aggregate memory as four domains, not one 128 GB allocation. The RTX 4090 and RTX 5090 have no NVLink; the RTX 3090 NVLink bridge is 2-way. See [Performance Tuning]({{< relref "performance.md" >}}) for the double-precision comparison.
 
 ## Features
 

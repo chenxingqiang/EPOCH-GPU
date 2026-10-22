@@ -25,6 +25,12 @@ MODULE shared_data
 
   IMPLICIT NONE
 
+  ABSTRACT INTERFACE
+    SUBROUTINE epoch_hook_noargs()
+    END SUBROUTINE epoch_hook_noargs
+  END INTERFACE
+  PROCEDURE(epoch_hook_noargs), POINTER :: epoch_before_output => NULL()
+
   ! This type represents parameters given to the parser.
   ! It can be extended by a developer freely
   ! It is the responsibility of the developer to ensure that a parameter is

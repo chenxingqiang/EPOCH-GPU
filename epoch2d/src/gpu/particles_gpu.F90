@@ -42,8 +42,9 @@ MODULE particles_gpu
   !---------------------------------------------------------------------------
   ! Physical constants (normalized)
   !---------------------------------------------------------------------------
-  REAL(num), PARAMETER :: c = 1.0_num          !< Speed of light (normalized)
-  REAL(num), PARAMETER :: c2 = 1.0_num         !< c^2
+  ! SI, matching constants.F90. The main EPOCH loop stores momentum in SI.
+  REAL(num), PARAMETER :: c = 299792458.0_num
+  REAL(num), PARAMETER :: c2 = c * c
 
 CONTAINS
 
@@ -327,7 +328,7 @@ CONTAINS
     REAL(num) :: cell_x_old, cell_y_old, cell_x_new, cell_y_new
     REAL(num) :: frac_x_old, frac_y_old, frac_x_new, frac_y_new
     REAL(num) :: part_mc, ipart_mc, gamma_rel, igamma, vz
-    REAL(num) :: qw_idt, qw_idxy
+    REAL(num) :: qw_idt_x, qw_idt_y, qw_idxy, shape_fac
     REAL(num) :: wx_old(-1:2), wy_old(-1:2), wx_new(-1:2), wy_new(-1:2)
     REAL(num) :: dwx(-1:2), dwy(-1:2)
     REAL(num) :: jx_accum, jy_accum, jz_contrib
@@ -335,6 +336,9 @@ CONTAINS
     idx = 1.0_num / dx
     idy = 1.0_num / dy
     idt = 1.0_num / dt
+    ! Triangle shape in 2D: particles.F90 uses fac = (1/2)**c_ndims.
+    ! Jx carries 1/(dt*dy), Jy carries 1/(dt*dx), Jz carries 1/(dx*dy).
+    shape_fac = 0.25_num
     part_mc = c * mass
     ipart_mc = 1.0_num / part_mc
     
@@ -347,7 +351,7 @@ CONTAINS
     !$ACC& PRIVATE(ix_old, iy_old, ix_new, iy_new, ix_base, iy_base) &
     !$ACC& PRIVATE(frac_x_old, frac_y_old, frac_x_new, frac_y_new) &
     !$ACC& PRIVATE(dcellx, dcelly, wx_old, wy_old, wx_new, wy_new, dwx, dwy) &
-    !$ACC& PRIVATE(gamma_rel, igamma, vz, qw_idt, qw_idxy) &
+    !$ACC& PRIVATE(gamma_rel, igamma, vz, qw_idt_x, qw_idt_y, qw_idxy) &
     !$ACC& PRIVATE(jx_accum, jy_accum, jz_contrib)
     DO ip = 1, n_particles
       ! Cell coordinates at old and new positions
@@ -412,9 +416,10 @@ CONTAINS
       igamma = 1.0_num / gamma_rel
       vz = pz(ip) * ipart_mc * igamma * c
       
-      ! Esirkepov current factors
-      qw_idt = charge * weight(ip) * idt  ! For Jx, Jy (charge conservation)
-      qw_idxy = charge * weight(ip) * idx * idy  ! For Jz (velocity-based)
+      ! Same normalization as particles.F90 (idty/idtx/idxy * weight * charge).
+      qw_idt_x = charge * weight(ip) * idt * idy * shape_fac
+      qw_idt_y = charge * weight(ip) * idt * idx * shape_fac
+      qw_idxy = charge * weight(ip) * idx * idy * shape_fac
       
       ! Esirkepov Jx deposition (cumulative in x)
       DO iy = -1, 2
@@ -423,7 +428,7 @@ CONTAINS
         DO ix = -1, 2
           IF (ix_base + ix < 1 - ng .OR. ix_base + ix > nx + ng) CYCLE
           ! Jx from charge displacement in x direction
-          jx_accum = jx_accum - qw_idt * dwx(ix) * (wy_old(iy) + 0.5_num * dwy(iy))
+          jx_accum = jx_accum - qw_idt_x * dwx(ix) * (wy_old(iy) + 0.5_num * dwy(iy))
           !$ACC ATOMIC UPDATE
           jx(ix_base + ix, iy_base + iy) = jx(ix_base + ix, iy_base + iy) + jx_accum
         END DO
@@ -436,7 +441,7 @@ CONTAINS
         DO iy = -1, 2
           IF (iy_base + iy < 1 - ng .OR. iy_base + iy > ny + ng) CYCLE
           ! Jy from charge displacement in y direction
-          jy_accum = jy_accum - qw_idt * dwy(iy) * (wx_old(ix) + 0.5_num * dwx(ix))
+          jy_accum = jy_accum - qw_idt_y * dwy(iy) * (wx_old(ix) + 0.5_num * dwx(ix))
           !$ACC ATOMIC UPDATE
           jy(ix_base + ix, iy_base + iy) = jy(ix_base + ix, iy_base + iy) + jy_accum
         END DO

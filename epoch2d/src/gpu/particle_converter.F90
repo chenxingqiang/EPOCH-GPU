@@ -25,6 +25,8 @@ MODULE particle_converter
   PUBLIC :: convert_soa_to_species
   PUBLIC :: sync_species_to_gpu
   PUBLIC :: sync_species_from_gpu
+  PUBLIC :: publish_species_from_gpu
+  PUBLIC :: reload_species_to_gpu
   PUBLIC :: allocate_soa_for_species
   PUBLIC :: deallocate_soa
 
@@ -300,6 +302,45 @@ CONTAINS
     CALL convert_soa_to_species(soa, species)
     
   END SUBROUTINE sync_species_from_gpu
+
+
+  SUBROUTINE publish_species_from_gpu(soa, species)
+    TYPE(particle_soa_t), INTENT(INOUT) :: soa
+    TYPE(particle_species), INTENT(INOUT) :: species
+
+    IF (soa%count <= 0) RETURN
+#ifdef GPU_ENABLED
+    !$ACC UPDATE HOST(soa%pos_x(1:soa%count), soa%pos_y(1:soa%count))
+    !$ACC UPDATE HOST(soa%px(1:soa%count), soa%py(1:soa%count), soa%pz(1:soa%count))
+    !$ACC UPDATE HOST(soa%weight(1:soa%count))
+#endif
+    CALL convert_soa_to_species(soa, species)
+  END SUBROUTINE publish_species_from_gpu
+
+
+  SUBROUTINE reload_species_to_gpu(species, soa)
+    TYPE(particle_species), INTENT(IN) :: species
+    TYPE(particle_soa_t), INTENT(INOUT) :: soa
+
+#ifdef GPU_ENABLED
+    IF (soa%count > 0 .AND. ALLOCATED(soa%pos_x)) THEN
+      !$ACC EXIT DATA DELETE(soa%pos_x(1:soa%count), soa%pos_y(1:soa%count))
+      !$ACC EXIT DATA DELETE(soa%pos_x_old(1:soa%count), soa%pos_y_old(1:soa%count))
+      !$ACC EXIT DATA DELETE(soa%px(1:soa%count), soa%py(1:soa%count), soa%pz(1:soa%count))
+      !$ACC EXIT DATA DELETE(soa%weight(1:soa%count))
+    END IF
+#endif
+    CALL convert_species_to_soa(species, soa)
+    IF (soa%count <= 0) RETURN
+    soa%pos_x_old(1:soa%count) = soa%pos_x(1:soa%count)
+    soa%pos_y_old(1:soa%count) = soa%pos_y(1:soa%count)
+#ifdef GPU_ENABLED
+    !$ACC ENTER DATA COPYIN(soa%pos_x(1:soa%count), soa%pos_y(1:soa%count))
+    !$ACC ENTER DATA COPYIN(soa%pos_x_old(1:soa%count), soa%pos_y_old(1:soa%count))
+    !$ACC ENTER DATA COPYIN(soa%px(1:soa%count), soa%py(1:soa%count), soa%pz(1:soa%count))
+    !$ACC ENTER DATA COPYIN(soa%weight(1:soa%count))
+#endif
+  END SUBROUTINE reload_species_to_gpu
 
 END MODULE particle_converter
 
