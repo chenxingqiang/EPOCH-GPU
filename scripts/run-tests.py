@@ -50,9 +50,13 @@ def run_tests(args):
     '''
     use nose to collect the tests and run them all.
     '''
+    # The CPU suite lives in tests/. tests_gpu/ needs nvfortran and a GPU
+    # binary, so the release CI must not collect it.
     noseargv = ['']
     if args.test:
         noseargv += ['tests.test_' + args.test]
+    else:
+        noseargv += ['tests']
     setcwd()
     testsok = nose.run(argv=noseargv)
     return testsok

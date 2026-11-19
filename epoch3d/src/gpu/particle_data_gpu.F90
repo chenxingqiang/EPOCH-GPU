@@ -29,6 +29,11 @@ MODULE particle_data_gpu
     REAL(num), ALLOCATABLE :: pos_x(:)
     REAL(num), ALLOCATABLE :: pos_y(:)
     REAL(num), ALLOCATABLE :: pos_z(:)
+
+    ! Old positions for Esirkepov current deposition
+    REAL(num), ALLOCATABLE :: pos_x_old(:)
+    REAL(num), ALLOCATABLE :: pos_y_old(:)
+    REAL(num), ALLOCATABLE :: pos_z_old(:)
     
     ! Momenta (3 components)
     REAL(num), ALLOCATABLE :: px(:)
@@ -77,6 +82,9 @@ CONTAINS
     ALLOCATE(soa%pos_x(n))
     ALLOCATE(soa%pos_y(n))
     ALLOCATE(soa%pos_z(n))
+    ALLOCATE(soa%pos_x_old(n))
+    ALLOCATE(soa%pos_y_old(n))
+    ALLOCATE(soa%pos_z_old(n))
     ALLOCATE(soa%px(n))
     ALLOCATE(soa%py(n))
     ALLOCATE(soa%pz(n))
@@ -88,6 +96,9 @@ CONTAINS
     soa%pos_x = 0.0_num
     soa%pos_y = 0.0_num
     soa%pos_z = 0.0_num
+    soa%pos_x_old = 0.0_num
+    soa%pos_y_old = 0.0_num
+    soa%pos_z_old = 0.0_num
     soa%px = 0.0_num
     soa%py = 0.0_num
     soa%pz = 0.0_num
@@ -106,6 +117,7 @@ CONTAINS
     
 #ifdef GPU_ENABLED
     !$ACC EXIT DATA DELETE(soa%pos_x, soa%pos_y, soa%pos_z) IF(ALLOCATED(soa%pos_x))
+    !$ACC EXIT DATA DELETE(soa%pos_x_old, soa%pos_y_old, soa%pos_z_old) IF(ALLOCATED(soa%pos_x_old))
     !$ACC EXIT DATA DELETE(soa%px, soa%py, soa%pz) IF(ALLOCATED(soa%px))
     !$ACC EXIT DATA DELETE(soa%weight, soa%cell_idx, soa%boundary_flag) IF(ALLOCATED(soa%weight))
 #endif
@@ -113,6 +125,9 @@ CONTAINS
     IF (ALLOCATED(soa%pos_x)) DEALLOCATE(soa%pos_x)
     IF (ALLOCATED(soa%pos_y)) DEALLOCATE(soa%pos_y)
     IF (ALLOCATED(soa%pos_z)) DEALLOCATE(soa%pos_z)
+    IF (ALLOCATED(soa%pos_x_old)) DEALLOCATE(soa%pos_x_old)
+    IF (ALLOCATED(soa%pos_y_old)) DEALLOCATE(soa%pos_y_old)
+    IF (ALLOCATED(soa%pos_z_old)) DEALLOCATE(soa%pos_z_old)
     IF (ALLOCATED(soa%px)) DEALLOCATE(soa%px)
     IF (ALLOCATED(soa%py)) DEALLOCATE(soa%py)
     IF (ALLOCATED(soa%pz)) DEALLOCATE(soa%pz)
@@ -138,6 +153,7 @@ CONTAINS
     
 #ifdef GPU_ENABLED
     !$ACC ENTER DATA COPYIN(soa%pos_x(1:n), soa%pos_y(1:n), soa%pos_z(1:n))
+    !$ACC ENTER DATA COPYIN(soa%pos_x_old(1:n), soa%pos_y_old(1:n), soa%pos_z_old(1:n))
     !$ACC ENTER DATA COPYIN(soa%px(1:n), soa%py(1:n), soa%pz(1:n))
     !$ACC ENTER DATA COPYIN(soa%weight(1:n))
     !$ACC ENTER DATA COPYIN(soa%cell_idx(1:n), soa%boundary_flag(1:n))
@@ -158,6 +174,7 @@ CONTAINS
     
 #ifdef GPU_ENABLED
     !$ACC UPDATE SELF(soa%pos_x(1:n), soa%pos_y(1:n), soa%pos_z(1:n))
+    !$ACC UPDATE SELF(soa%pos_x_old(1:n), soa%pos_y_old(1:n), soa%pos_z_old(1:n))
     !$ACC UPDATE SELF(soa%px(1:n), soa%py(1:n), soa%pz(1:n))
     !$ACC UPDATE SELF(soa%weight(1:n))
     !$ACC UPDATE SELF(soa%cell_idx(1:n), soa%boundary_flag(1:n))

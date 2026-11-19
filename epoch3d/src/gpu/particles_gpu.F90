@@ -275,6 +275,7 @@ CONTAINS
     INTEGER :: ix_base, iy_base, iz_base, ix, iy, iz
     INTEGER :: dcellx, dcelly, dcellz
     REAL(num) :: idx, idy, idz, idt
+    REAL(num) :: idtyz, idtxz, idtxy, shape_fac
     REAL(num) :: cell_x_old, cell_y_old, cell_z_old
     REAL(num) :: cell_x_new, cell_y_new, cell_z_new
     REAL(num) :: frac_x_old, frac_y_old, frac_z_old
@@ -288,6 +289,12 @@ CONTAINS
     idy = 1.0_num / dy
     idz = 1.0_num / dz
     idt = 1.0_num / dt
+    ! Triangle shape in 3D: particles.F90 uses fac = (0.5_num)**c_ndims.
+    ! idtyz multiplies charge*weight for Jx, idtxz for Jy, idtxy for Jz.
+    shape_fac = 0.125_num
+    idtyz = idt * idy * idz * shape_fac
+    idtxz = idt * idx * idz * shape_fac
+    idtxy = idt * idx * idy * shape_fac
     
     !$ACC PARALLEL LOOP &
     !$ACC& PRESENT(pos_x_old(1:n_particles), pos_y_old(1:n_particles), pos_z_old(1:n_particles)) &
@@ -370,10 +377,10 @@ CONTAINS
       dwy = wy_new - wy_old
       dwz = wz_new - wz_old
       
-      ! Current factor for 3D Esirkepov
-      ! Jx: -q*w/dt * dwx * Sy_avg * Sz_avg (cumulative in x)
-      ! Jy: -q*w/dt * dwy * Sx_avg * Sz_avg (cumulative in y)
-      ! Jz: -q*w/dt * dwz * Sx_avg * Sy_avg (cumulative in z)
+      ! Current factor for 3D Esirkepov (triangle shape)
+      ! Jx: -q*w*idtyz * dwx * Sy_avg * Sz_avg (cumulative in x)
+      ! Jy: -q*w*idtxz * dwy * Sx_avg * Sz_avg (cumulative in y)
+      ! Jz: -q*w*idtxy * dwz * Sx_avg * Sy_avg (cumulative in z)
       
       ! Esirkepov Jx deposition
       DO iz = -1, 2
@@ -383,7 +390,7 @@ CONTAINS
           jx_accum = 0.0_num
           DO ix = -1, 2
             IF (ix_base + ix < 1 - ng .OR. ix_base + ix > nx + ng) CYCLE
-            jx_accum = jx_accum - charge * weight(ip) * idt * dwx(ix) * &
+            jx_accum = jx_accum - charge * weight(ip) * idtyz * dwx(ix) * &
                        (wy_old(iy) + 0.5_num * dwy(iy)) * &
                        (wz_old(iz) + 0.5_num * dwz(iz))
             !$ACC ATOMIC UPDATE
@@ -401,7 +408,7 @@ CONTAINS
           jy_accum = 0.0_num
           DO iy = -1, 2
             IF (iy_base + iy < 1 - ng .OR. iy_base + iy > ny + ng) CYCLE
-            jy_accum = jy_accum - charge * weight(ip) * idt * dwy(iy) * &
+            jy_accum = jy_accum - charge * weight(ip) * idtxz * dwy(iy) * &
                        (wx_old(ix) + 0.5_num * dwx(ix)) * &
                        (wz_old(iz) + 0.5_num * dwz(iz))
             !$ACC ATOMIC UPDATE
@@ -419,7 +426,7 @@ CONTAINS
           jz_accum = 0.0_num
           DO iz = -1, 2
             IF (iz_base + iz < 1 - ng .OR. iz_base + iz > nz + ng) CYCLE
-            jz_accum = jz_accum - charge * weight(ip) * idt * dwz(iz) * &
+            jz_accum = jz_accum - charge * weight(ip) * idtxy * dwz(iz) * &
                        (wx_old(ix) + 0.5_num * dwx(ix)) * &
                        (wy_old(iy) + 0.5_num * dwy(iy))
             !$ACC ATOMIC UPDATE

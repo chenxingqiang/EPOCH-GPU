@@ -27,6 +27,7 @@ MODULE particle_data_gpu
   TYPE :: particle_soa_1d
     ! Positions (1D)
     REAL(num), ALLOCATABLE :: pos_x(:)
+    REAL(num), ALLOCATABLE :: pos_x_old(:)
     
     ! Momenta (3 components even in 1D for full 3V)
     REAL(num), ALLOCATABLE :: px(:)
@@ -73,6 +74,7 @@ CONTAINS
     
     ! Allocate arrays
     ALLOCATE(soa%pos_x(n))
+    ALLOCATE(soa%pos_x_old(n))
     ALLOCATE(soa%px(n))
     ALLOCATE(soa%py(n))
     ALLOCATE(soa%pz(n))
@@ -82,6 +84,7 @@ CONTAINS
     
     ! Initialize
     soa%pos_x = 0.0_num
+    soa%pos_x_old = 0.0_num
     soa%px = 0.0_num
     soa%py = 0.0_num
     soa%pz = 0.0_num
@@ -100,10 +103,12 @@ CONTAINS
     
 #ifdef GPU_ENABLED
     !$ACC EXIT DATA DELETE(soa%pos_x, soa%px, soa%py, soa%pz) IF(ALLOCATED(soa%pos_x))
+    !$ACC EXIT DATA DELETE(soa%pos_x_old) IF(ALLOCATED(soa%pos_x_old))
     !$ACC EXIT DATA DELETE(soa%weight, soa%cell_idx, soa%boundary_flag) IF(ALLOCATED(soa%weight))
 #endif
     
     IF (ALLOCATED(soa%pos_x)) DEALLOCATE(soa%pos_x)
+    IF (ALLOCATED(soa%pos_x_old)) DEALLOCATE(soa%pos_x_old)
     IF (ALLOCATED(soa%px)) DEALLOCATE(soa%px)
     IF (ALLOCATED(soa%py)) DEALLOCATE(soa%py)
     IF (ALLOCATED(soa%pz)) DEALLOCATE(soa%pz)
@@ -129,6 +134,7 @@ CONTAINS
     
 #ifdef GPU_ENABLED
     !$ACC ENTER DATA COPYIN(soa%pos_x(1:n))
+    !$ACC ENTER DATA COPYIN(soa%pos_x_old(1:n))
     !$ACC ENTER DATA COPYIN(soa%px(1:n), soa%py(1:n), soa%pz(1:n))
     !$ACC ENTER DATA COPYIN(soa%weight(1:n))
     !$ACC ENTER DATA COPYIN(soa%cell_idx(1:n), soa%boundary_flag(1:n))
@@ -149,6 +155,7 @@ CONTAINS
     
 #ifdef GPU_ENABLED
     !$ACC UPDATE SELF(soa%pos_x(1:n))
+    !$ACC UPDATE SELF(soa%pos_x_old(1:n))
     !$ACC UPDATE SELF(soa%px(1:n), soa%py(1:n), soa%pz(1:n))
     !$ACC UPDATE SELF(soa%weight(1:n))
     !$ACC UPDATE SELF(soa%cell_idx(1:n), soa%boundary_flag(1:n))

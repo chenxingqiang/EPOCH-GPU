@@ -71,7 +71,7 @@ PROGRAM pic
 #ifdef GPU_ENABLED
   ! GPU-related variables
   LOGICAL :: gpu_available = .FALSE.
-  TYPE(particle_soa_1d), ALLOCATABLE :: species_soa(:)
+  TYPE(particle_soa_1d), ALLOCATABLE, TARGET :: species_soa(:)
   INTEGER :: n_gpu_species
 #endif
   LOGICAL :: halt = .FALSE., push = .TRUE.
@@ -215,6 +215,8 @@ PROGRAM pic
     DO ispecies = 1, n_species
       CALL sync_species_to_gpu(species_list(ispecies), species_soa(ispecies))
     END DO
+    CALL gpu_bind_species(species_soa)
+    epoch_before_output => gpu_publish_snapshot
     
     ! Copy field arrays to GPU (1D)
     CALL copy_fields_to_gpu(ex, ey, ez, bx, by, bz, jx, jy, jz, &
@@ -254,20 +256,25 @@ PROGRAM pic
     END IF
 #endif
 
+#ifdef GPU_ENABLED
+    IF (gpu_available .AND. gpu_yee_resident()) THEN
+      CALL gpu_update_eb_fields_half()
+    ELSE
+#endif
     CALL update_eb_fields_half
+#ifdef GPU_ENABLED
+    END IF
+#endif
     IF (push) THEN
       CALL run_injectors
       ! .FALSE. this time to use load balancing threshold
       IF (use_balance) CALL balance_workload(.FALSE.)
-      
-      ! Push particles
+
 #ifdef GPU_ENABLED
+      IF (gpu_available .AND. (use_injectors .OR. use_balance)) THEN
+        CALL gpu_reload_species_from_host()
+      END IF
       IF (gpu_available) THEN
-        ! Clear current arrays before GPU particle push (as done in CPU version)
-        jx = 0.0_num
-        jy = 0.0_num
-        jz = 0.0_num
-        ! GPU particle push for each species
         CALL gpu_push_all_species(species_soa, n_species, species_list, &
                                   ex, ey, ez, bx, by, bz, jx, jy, jz, &
                                   nx, dt, dx)
@@ -275,6 +282,9 @@ PROGRAM pic
 #endif
         CALL push_particles
 #ifdef GPU_ENABLED
+      END IF
+      IF (gpu_available .AND. gpu_step_touches_host_particles()) THEN
+        CALL gpu_publish_snapshot()
       END IF
 #endif
       IF (use_particle_lists) THEN
@@ -310,7 +320,17 @@ PROGRAM pic
       IF (use_background_collisions) CALL run_background_collisions
       IF (use_particle_migration) CALL migrate_particles(step)
       IF (use_field_ionisation) CALL ionise_particles
+#ifdef GPU_ENABLED
+      IF (gpu_available .AND. gpu_step_touches_host_particles()) THEN
+        CALL gpu_reload_species_from_host()
+      END IF
+#endif
       CALL current_finish
+#ifdef GPU_ENABLED
+      IF (gpu_available .AND. gpu_yee_resident()) THEN
+        CALL gpu_sync_current_to_device()
+      END IF
+#endif
       CALL update_particle_count
     END IF
 
@@ -325,10 +345,48 @@ PROGRAM pic
     CALL output_routines(step)
     time = time + dt / 2.0_num
 
+#ifdef GPU_ENABLED
+    IF (gpu_available .AND. gpu_yee_resident()) THEN
+      CALL gpu_update_eb_fields_final()
+    ELSE
+#endif
     CALL update_eb_fields_final
+#ifdef GPU_ENABLED
+    END IF
+#endif
 
     CALL moving_window
+#ifdef GPU_ENABLED
+    IF (gpu_available .AND. move_window) THEN
+      CALL gpu_reload_fields_from_host()
+      CALL gpu_reload_species_from_host()
+    END IF
+#endif
   END DO
+
+#ifdef GPU_ENABLED
+  ! Copy data back from GPU and cleanup.
+  ! Drop the output hook first: the final dump reads the host lists
+  ! written by sync_species_from_gpu, and the SoA is released below.
+  epoch_before_output => NULL()
+  IF (gpu_available) THEN
+    ! Copy fields back from GPU (1D)
+    CALL copy_fields_from_gpu(ex, ey, ez, bx, by, bz, jx, jy, jz, &
+                              1-ng, nx+ng)
+
+    ! Copy particles back from GPU
+    DO ispecies = 1, n_species
+      CALL sync_species_from_gpu(species_soa(ispecies), species_list(ispecies))
+    END DO
+
+    DEALLOCATE(species_soa)
+    CALL gpu_finalize_all()
+
+    IF (rank == 0) THEN
+      PRINT*, 'GPU acceleration completed successfully'
+    END IF
+  END IF
+#endif
 
   IF (rank == 0) runtime = MPI_WTIME() - walltime_started
 
@@ -346,27 +404,6 @@ PROGRAM pic
     CALL create_full_timestring(runtime, timestring)
     WRITE(*,*) 'Final runtime of core = ' // TRIM(timestring)
   END IF
-
-#ifdef GPU_ENABLED
-  ! Copy data back from GPU and cleanup
-  IF (gpu_available) THEN
-    ! Copy fields back from GPU (1D)
-    CALL copy_fields_from_gpu(ex, ey, ez, bx, by, bz, jx, jy, jz, &
-                              1-ng, nx+ng)
-    
-    ! Copy particles back from GPU
-    DO ispecies = 1, n_species
-      CALL sync_species_from_gpu(species_soa(ispecies), species_list(ispecies))
-    END DO
-    
-    DEALLOCATE(species_soa)
-    CALL gpu_finalize_all()
-    
-    IF (rank == 0) THEN
-      PRINT*, 'GPU acceleration completed successfully'
-    END IF
-  END IF
-#endif
 
   CALL finalise
 

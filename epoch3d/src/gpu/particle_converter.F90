@@ -25,6 +25,8 @@ MODULE particle_converter
   PUBLIC :: convert_soa_to_species
   PUBLIC :: sync_species_to_gpu
   PUBLIC :: sync_species_from_gpu
+  PUBLIC :: publish_species_from_gpu
+  PUBLIC :: reload_species_to_gpu
   PUBLIC :: allocate_soa_for_species
   PUBLIC :: deallocate_soa
 
@@ -60,10 +62,13 @@ CONTAINS
       END IF
     END IF
     
-    ! Allocate arrays (3D: pos_x, pos_y, pos_z)
+    ! Allocate arrays (3D: pos_x, pos_y, pos_z and old positions)
     ALLOCATE(soa%pos_x(capacity))
     ALLOCATE(soa%pos_y(capacity))
     ALLOCATE(soa%pos_z(capacity))
+    ALLOCATE(soa%pos_x_old(capacity))
+    ALLOCATE(soa%pos_y_old(capacity))
+    ALLOCATE(soa%pos_z_old(capacity))
     ALLOCATE(soa%px(capacity))
     ALLOCATE(soa%py(capacity))
     ALLOCATE(soa%pz(capacity))
@@ -79,6 +84,9 @@ CONTAINS
     soa%pos_x = 0.0_num
     soa%pos_y = 0.0_num
     soa%pos_z = 0.0_num
+    soa%pos_x_old = 0.0_num
+    soa%pos_y_old = 0.0_num
+    soa%pos_z_old = 0.0_num
     soa%px = 0.0_num
     soa%py = 0.0_num
     soa%pz = 0.0_num
@@ -99,6 +107,9 @@ CONTAINS
     IF (ALLOCATED(soa%pos_x)) DEALLOCATE(soa%pos_x)
     IF (ALLOCATED(soa%pos_y)) DEALLOCATE(soa%pos_y)
     IF (ALLOCATED(soa%pos_z)) DEALLOCATE(soa%pos_z)
+    IF (ALLOCATED(soa%pos_x_old)) DEALLOCATE(soa%pos_x_old)
+    IF (ALLOCATED(soa%pos_y_old)) DEALLOCATE(soa%pos_y_old)
+    IF (ALLOCATED(soa%pos_z_old)) DEALLOCATE(soa%pos_z_old)
     IF (ALLOCATED(soa%px)) DEALLOCATE(soa%px)
     IF (ALLOCATED(soa%py)) DEALLOCATE(soa%py)
     IF (ALLOCATED(soa%pz)) DEALLOCATE(soa%pz)
@@ -246,10 +257,20 @@ CONTAINS
     !$ACC ENTER DATA COPYIN(soa%pos_x(1:soa%count))
     !$ACC ENTER DATA COPYIN(soa%pos_y(1:soa%count))
     !$ACC ENTER DATA COPYIN(soa%pos_z(1:soa%count))
+    !$ACC ENTER DATA COPYIN(soa%pos_x_old(1:soa%count))
+    !$ACC ENTER DATA COPYIN(soa%pos_y_old(1:soa%count))
+    !$ACC ENTER DATA COPYIN(soa%pos_z_old(1:soa%count))
     !$ACC ENTER DATA COPYIN(soa%px(1:soa%count))
     !$ACC ENTER DATA COPYIN(soa%py(1:soa%count))
     !$ACC ENTER DATA COPYIN(soa%pz(1:soa%count))
     !$ACC ENTER DATA COPYIN(soa%weight(1:soa%count))
+
+    ! Initialize old positions to current positions
+    soa%pos_x_old(1:soa%count) = soa%pos_x(1:soa%count)
+    soa%pos_y_old(1:soa%count) = soa%pos_y(1:soa%count)
+    soa%pos_z_old(1:soa%count) = soa%pos_z(1:soa%count)
+    !$ACC UPDATE DEVICE(soa%pos_x_old(1:soa%count), soa%pos_y_old(1:soa%count), &
+    !$ACC& soa%pos_z_old(1:soa%count))
 #endif
     
   END SUBROUTINE sync_species_to_gpu
@@ -283,6 +304,8 @@ CONTAINS
     !$ACC EXIT DATA DELETE(soa%pos_x(1:soa%count))
     !$ACC EXIT DATA DELETE(soa%pos_y(1:soa%count))
     !$ACC EXIT DATA DELETE(soa%pos_z(1:soa%count))
+    !$ACC EXIT DATA DELETE(soa%pos_x_old(1:soa%count), soa%pos_y_old(1:soa%count), &
+    !$ACC& soa%pos_z_old(1:soa%count))
     !$ACC EXIT DATA DELETE(soa%px(1:soa%count), soa%py(1:soa%count), soa%pz(1:soa%count))
     !$ACC EXIT DATA DELETE(soa%weight(1:soa%count))
 #endif
@@ -291,6 +314,51 @@ CONTAINS
     CALL convert_soa_to_species(soa, species)
     
   END SUBROUTINE sync_species_from_gpu
+
+
+  SUBROUTINE publish_species_from_gpu(soa, species)
+    TYPE(particle_soa_3d), INTENT(INOUT) :: soa
+    TYPE(particle_species), INTENT(INOUT) :: species
+
+    IF (soa%count <= 0) RETURN
+#ifdef GPU_ENABLED
+    !$ACC UPDATE HOST(soa%pos_x(1:soa%count), soa%pos_y(1:soa%count), &
+    !$ACC& soa%pos_z(1:soa%count))
+    !$ACC UPDATE HOST(soa%px(1:soa%count), soa%py(1:soa%count), soa%pz(1:soa%count))
+    !$ACC UPDATE HOST(soa%weight(1:soa%count))
+#endif
+    CALL convert_soa_to_species(soa, species)
+  END SUBROUTINE publish_species_from_gpu
+
+
+  SUBROUTINE reload_species_to_gpu(species, soa)
+    TYPE(particle_species), INTENT(IN) :: species
+    TYPE(particle_soa_3d), INTENT(INOUT) :: soa
+
+#ifdef GPU_ENABLED
+    IF (soa%count > 0 .AND. ALLOCATED(soa%pos_x)) THEN
+      !$ACC EXIT DATA DELETE(soa%pos_x(1:soa%count), soa%pos_y(1:soa%count), &
+      !$ACC& soa%pos_z(1:soa%count))
+      !$ACC EXIT DATA DELETE(soa%pos_x_old(1:soa%count), soa%pos_y_old(1:soa%count), &
+      !$ACC& soa%pos_z_old(1:soa%count))
+      !$ACC EXIT DATA DELETE(soa%px(1:soa%count), soa%py(1:soa%count), soa%pz(1:soa%count))
+      !$ACC EXIT DATA DELETE(soa%weight(1:soa%count))
+    END IF
+#endif
+    CALL convert_species_to_soa(species, soa)
+    IF (soa%count <= 0) RETURN
+    soa%pos_x_old(1:soa%count) = soa%pos_x(1:soa%count)
+    soa%pos_y_old(1:soa%count) = soa%pos_y(1:soa%count)
+    soa%pos_z_old(1:soa%count) = soa%pos_z(1:soa%count)
+#ifdef GPU_ENABLED
+    !$ACC ENTER DATA COPYIN(soa%pos_x(1:soa%count), soa%pos_y(1:soa%count), &
+    !$ACC& soa%pos_z(1:soa%count))
+    !$ACC ENTER DATA COPYIN(soa%pos_x_old(1:soa%count), soa%pos_y_old(1:soa%count), &
+    !$ACC& soa%pos_z_old(1:soa%count))
+    !$ACC ENTER DATA COPYIN(soa%px(1:soa%count), soa%py(1:soa%count), soa%pz(1:soa%count))
+    !$ACC ENTER DATA COPYIN(soa%weight(1:soa%count))
+#endif
+  END SUBROUTINE reload_species_to_gpu
 
 END MODULE particle_converter
 
