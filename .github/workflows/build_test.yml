@@ -87,7 +87,8 @@ jobs:
   # ===========================================
   test_python_package:
     name: Python Package Test
-    runs-on: ubuntu-latest
+    # ubuntu-latest is 26.04 and setup-python has no CPython 3.9 build for it.
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         python-version: ['3.9', '3.10', '3.11', '3.12']
